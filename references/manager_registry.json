@@ -1,0 +1,36 @@
+{
+  "armistice capital": {
+    "cik": "1601086",
+    "full_name": "Armistice Capital Management LP",
+    "verified_against": "SEC EDGAR full-text search",
+    "verified_date": "2026-09-02"
+  },
+  "maverick capital": {
+    "cik": "934639",
+    "full_name": "Maverick Capital, Ltd.",
+    "verified_against": "SEC EDGAR filing history (13F-HR since 2004) plus multiple third-party filings confirming CIK",
+    "verified_date": "2026-09-03",
+    "note": "Distinct from Maverick Capital Management LLC (CIK 1286655), the GP entity -- do not confuse the two."
+  },
+  "ghisallo capital": {
+    "cik": "1825214",
+    "full_name": "Ghisallo Capital Management LLC",
+    "verified_against": "Consistent across six independent third-party sources (capedge, fintool, fintel, last10k, aum13f, sensamarket)",
+    "verified_date": "2026-09-03",
+    "note": "Holds substantial convertible-bond (PRN-type) positions alongside equities -- good real-world test case for CONVERTIBLE_BOND classification."
+  },
+  "polymer capital (hk)": {
+    "cik": "1970465",
+    "full_name": "Polymer Capital Management (HK) LTD",
+    "verified_against": "SEC EDGAR filing index plus aum13f.com",
+    "verified_date": "2026-09-03",
+    "note": "AMBIGUOUS NAME -- 'Polymer Capital' alone matches two distinct, unrelated filers. This is the Hong Kong entity, ~$1.16B AUM, 154 securities. See also 'polymer capital (us)'."
+  },
+  "polymer capital (us)": {
+    "cik": "1973324",
+    "full_name": "Polymer Capital Management (US) LLC",
+    "verified_against": "aum13f.com plus fintool.com, cross-referenced",
+    "verified_date": "2026-09-03",
+    "note": "AMBIGUOUS NAME -- distinct from Polymer Capital Management (HK) LTD (CIK 1970465). This is the New York entity, ~$802.5M AUM, 535 equity + 54 options positions, founded 2021 by Eric Kemnitz. Holds SPAC-related positions (GS Acquisition Holdings Corp, Fortress Value Acquisition Corp)."
+  }
+}

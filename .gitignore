@@ -1,0 +1,20 @@
+# Entire data directory -- real filing content, dollar figures, issuer
+# names, and human review decisions (resolution_log.jsonl) must never
+# be committed. Directory-level ignore, not individual filenames, so
+# any current or future file here (including period-stamped quarter
+# files like classified_rows_2026-03-31.json) is covered automatically.
+scripts/data/
+scripts/bloomberg_template.xlsx
+scripts/test_bbg_output.xlsx
+scripts/__pycache__/
+*.pyc
+
+# Generated dashboard output, not source code -- same reasoning as
+# bloomberg_template.xlsx above. Named exact files first, then a
+# general *.html going forward so any future dashboard.py run output
+# (a new demo/version variant, a different fund's dashboard, etc.)
+# is covered automatically rather than needing a new entry each time.
+dashboard.html
+dashboard_demo.html
+dashboard_v2.html
+*.html
