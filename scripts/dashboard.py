@@ -19,9 +19,11 @@ silent mismatch against the tested Python version; discrete precomputed
 rates avoid that at the cost of only offering five fixed choices, not
 "custom" yet.
 
-Usage: python dashboard.py [fund_name] [output_file.html]
+Usage: python dashboard.py [fund_name] [output_file.html] [prior_quarter_paths...]
 Reads:  data/classified_rows.json, data/market_data.json
-Writes: <output_file.html> (default: dashboard.html)
+Writes: <output_file.html> if given; otherwise defaults to
+        dashboard_{fund_name}_{current_quarter}.html so different funds
+        and different quarters of the same fund never silently collide.
 """
 import json
 import sys
@@ -30,7 +32,7 @@ from pathlib import Path
 from analyze import (
     aggregate_to_economic_positions, compute_true_long_exposure,
     compute_concentration, compute_index_hedge_ratio, flag_related_security_families,
-    compute_position_status, chain_position_status,
+    compute_position_status, chain_position_status, compute_sector_concentration,
 )
 from liquidity import (
     load_market_data, compute_liquidity, bucket_summary, discrete_bucket_summary,
@@ -63,13 +65,36 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     # calculation, just a different slice of existing output.
     top10_by_book = concentration["ranked"][:10]
 
+    # Sector concentration -- both GICS levels actually wired into the
+    # real Bloomberg template (Level 3 GICS_INDUSTRY_NAME, Level 4
+    # GICS_SUB_INDUSTRY_NAME; there is no Level 2/1 pull in this pipeline,
+    # so the toggle is Industry/Sub-Industry, not Sector/Industry-Group).
+    # Only PASS-status values count as classified -- PENDING_EXTERNAL_DATA,
+    # REVIEW, or a missing CUSIP entirely all fall through the same way,
+    # into compute_sector_concentration's own explicit "Unclassified"
+    # bucket, matching analyze.py's own CLI reporting block exactly.
+    sector_by_cusip_l3 = {
+        cusip: m["GICS_INDUSTRY_NAME"] for cusip, m in market_data.items()
+        if m.get("GICS_INDUSTRY_NAME_status") == "PASS"
+    }
+    sector_by_cusip_l4 = {
+        cusip: m["GICS_SUB_INDUSTRY_NAME"] for cusip, m in market_data.items()
+        if m.get("GICS_SUB_INDUSTRY_NAME_status") == "PASS"
+    }
+    sector_concentration = {
+        "industry": compute_sector_concentration(exposures, sector_by_cusip_l3),
+        "subIndustry": compute_sector_concentration(exposures, sector_by_cusip_l4),
+    }
+
     # QoQ / multi-quarter chain -- optional, since it needs prior
     # quarters the user may not have fetched yet. Share-count based, per
     # gap #2: a value change can be pure mark-to-market, a share change
     # is the manager doing something.
     position_status_by_cusip = {}   # immediate (latest) transition only -- feeds the existing per-liquidity-record "qoq" field, unchanged shape
-    chain_by_cusip = {}             # full multi-quarter chain, when 2+ total quarters are available
+    chain_by_cusip = {}             # CUSIP-keyed, for joining onto liquidity records only -- see note below
     quarter_labels = []
+    reentered_count = 0
+    held_all_count = 0
 
     if prior_quarters_rows:
         quarters = [(derive_quarter_label(rows), aggregate_to_economic_positions(rows))
@@ -78,13 +103,33 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         quarter_labels = [label for label, _ in quarters]
 
         chain = chain_position_status(quarters)
+
+        # Summary counts computed from the full per-Security-ID chain,
+        # NOT from chain_by_cusip below. Found by testing against a real
+        # options-heavy fund (Pinnbrook): chain_position_status returns
+        # one record per (cusip, instrumentClass), so a CUSIP holding
+        # both COMMON and CALL rows produces two chain records -- if a
+        # CUSIP's COMMON leg reentered but its CALL leg didn't (or vice
+        # versa), collapsing to one dict entry per CUSIP silently drops
+        # whichever one iteration order overwrites, undercounting by one
+        # per such disagreement. Confirmed directly on real data: 7 of
+        # Pinnbrook's CUSIPs had disagreeing COMMON/CALL flags, and the
+        # old cusip-collapsed computation undercounted reenteredCount by
+        # 2 (16 -> 14) and heldAllQuartersCount by 1 (11 -> 10) as a
+        # result. Counting from `chain` directly avoids the collision
+        # entirely, since nothing is deduplicated by CUSIP here.
+        reentered_count = sum(1 for c in chain if c["reenteredAfterClose"])
+        held_all_count = sum(1 for c in chain if c["heldAllQuarters"])
+
         for c in chain:
-            # Keyed by cusip only, matching the pre-existing single-
-            # quarter convention exactly -- a cusip with both COMMON and
-            # CALL rows collapses to one entry either way, and only
-            # COMMON is ever joined onto an ADV-eligible liquidity
-            # record downstream, so this preserves identical behavior
-            # for the 1-prior-quarter case.
+            # This dict IS still legitimately CUSIP-keyed, unlike the
+            # summary counts above -- it only ever feeds a liquidity
+            # record lookup (line ~141 below), and every liquidity
+            # record is itself COMMON-only per CUSIP (per compute_liquidity's
+            # own convention), so a CUSIP with multiple instrument classes
+            # collapsing to one entry here changes nothing observable:
+            # only the COMMON leg's chain data is ever actually joined
+            # onto anything downstream of this dict.
             chain_by_cusip[c["cusip"]] = c
             last_t = c["transitions"][-1]
             position_status_by_cusip[c["cusip"]] = {
@@ -143,13 +188,14 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     )
     threshold_flags = [r for r in default_liquidity if r["thresholdProximityFlag"]]
 
-    # Chain-level summary counts, only meaningful with 2+ total quarters
-    # (a single prior quarter can show NEW/CLOSED/INCREASED/DECREASED,
-    # but reenteredAfterClose and heldAllQuarters both need a real chain
-    # to mean anything -- with only 2 quarters "held all quarters" is the
-    # same as "not new and not closed").
-    reentered_count = sum(1 for c in chain_by_cusip.values() if c["reenteredAfterClose"])
-    held_all_count = sum(1 for c in chain_by_cusip.values() if c["heldAllQuarters"])
+    # reentered_count / held_all_count already computed above, directly
+    # from the full per-Security-ID chain -- see the note there. Only
+    # meaningful with 2+ total quarters (a single prior quarter can show
+    # NEW/CLOSED/INCREASED/DECREASED, but reenteredAfterClose and
+    # heldAllQuarters both need a real chain to mean anything -- with
+    # only 2 quarters "held all quarters" is the same as "not new and
+    # not closed"); both default to 0 above when prior_quarters_rows is
+    # empty, matching that case correctly.
 
     return {
         "fundName": fund_name,
@@ -158,6 +204,7 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         "exposures": sorted(exposures, key=lambda e: -e["trueLongExposure"]),
         "concentration": concentration,
         "top10ByBook": top10_by_book,
+        "sectorConcentration": sector_concentration,
         "hedge": hedge,
         "families": families,
         "byBasis": by_basis,
@@ -200,12 +247,23 @@ __JS__
 
 if __name__ == "__main__":
     fund_name = sys.argv[1] if len(sys.argv) > 1 else "fund"
-    output_file = sys.argv[2] if len(sys.argv) > 2 else "dashboard.html"
+    explicit_output_file = sys.argv[2] if len(sys.argv) > 2 else None
     prior_quarter_paths = sys.argv[3:]   # 0, 1, or several -- chronological, oldest first, current quarter NOT included
 
     with open("data/classified_rows.json") as f:
         classified_rows = json.load(f)
     market_data = load_market_data()
+
+    # Default filename includes fund + current quarter, so different
+    # funds and different quarters of the same fund can never silently
+    # overwrite one another -- an explicit filename (2nd argument) still
+    # always wins over this default.
+    if explicit_output_file:
+        output_file = explicit_output_file
+    else:
+        current_period = derive_quarter_label(classified_rows)
+        safe_fund = fund_name.lower().replace(" ", "_")
+        output_file = f"dashboard_{safe_fund}_{current_period}.html"
 
     prior_quarters_rows = None
     if prior_quarter_paths:

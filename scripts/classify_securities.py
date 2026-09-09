@@ -72,6 +72,22 @@ FUND_CUSIP_MAP = {
     # SSGA's own fund page), 2026-09-03, from Armistice's real Q2 2026
     # live filing -- found as FUND_UNVERIFIED before this entry existed.
     "78464A714": "SECTOR_ETF",      # SPDR S&P Retail ETF (XRT)
+    # Verified directly from the filing's own titleOfClass text
+    # ("SEMICONDUCTR ETF"), 2026-09-08, from Pinnbrook Capital
+    # Management's real Q4 2025/Q1 2026 filings -- found as a silently
+    # miscounted plain PUT before this entry existed, because "VANECK"
+    # isn't in ETF_SPONSOR_PATTERN below. SECTOR_ETF, not ETF_INDEX --
+    # semiconductor is an equity-sector play (same category as XSD
+    # above), not a broad-market hedge.
+    "92189F676": "SECTOR_ETF",      # VanEck Semiconductor ETF (SMH)
+    # Verified directly from the filing's own titleOfClass text
+    # ("SR LN ETF"), 2026-09-08, same Pinnbrook filings -- caught as
+    # FUND_UNVERIFIED_PUT (not silently miscounted) since "INVESCO"
+    # IS in ETF_SPONSOR_PATTERN, but not yet in any verified table.
+    # FIXED_INCOME_ETF, not SECTOR_ETF -- a senior-loan/floating-rate
+    # product is a credit/rates hedge, the same category as TLT/HYG,
+    # not an equity-sector one.
+    "46138G508": "FIXED_INCOME_ETF", # Invesco Senior Loan ETF (BKLN)
 }
 
 # Fund-sponsor name pattern, checked against BOTH nameOfIssuer and

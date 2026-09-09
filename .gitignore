@@ -9,6 +9,18 @@ scripts/test_bbg_output.xlsx
 scripts/__pycache__/
 *.pyc
 
+# Generalized from the exact-filename entry above -- found necessary
+# testing against a second fund in the same session: Pinnbrook's
+# export produced scripts/pinnbrook_bloomberg_template.xlsx, which the
+# exact-match entry above never covered, and it showed up as a real,
+# uncaught untracked file (same CUSIP/position-data exposure as the
+# default-named template) the first time a second fund's template
+# actually existed locally alongside the first fund's. Same fix
+# pattern as *.html below: exact name first (kept, harmless), general
+# pattern added so any future fund's generated workbook is covered
+# automatically rather than needing a new entry per fund.
+*bloomberg_template*.xlsx
+
 # Generated dashboard output, not source code -- same reasoning as
 # bloomberg_template.xlsx above. Named exact files first, then a
 # general *.html going forward so any future dashboard.py run output

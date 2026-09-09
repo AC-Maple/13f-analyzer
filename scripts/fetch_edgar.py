@@ -280,8 +280,26 @@ def main():
     # second quarter overwrites data/parsed_rows.json (every downstream
     # script's default), but this copy persists, so a prior quarter is
     # still there to compare against for QoQ position status.
+    #
+    # CIK-qualified, not period-alone: found by testing against a real
+    # second fund in the same session (Pinnbrook, CIK 1856103) -- most
+    # 13F filers report on standard calendar-quarter boundaries, so two
+    # unrelated funds' filings routinely share the exact same
+    # period_of_report string. A period-only filename silently
+    # overwrote Armistice's (CIK 1601086) saved Q4 2025/Q1 2026 files
+    # with Pinnbrook's data of the same period labels the moment a
+    # second fund was fetched in this project -- confirmed directly:
+    # every "Armistice" period-stamped file read back with
+    # _source_cik=1856103 after the collision. dashboard.py's own
+    # output filename was already fund-qualified for exactly this
+    # reason (SKILL.md: "so different funds and different quarters of
+    # the same fund can never silently overwrite one another") --
+    # fetch_edgar.py's period-stamped copy never got the same
+    # treatment until this bug actually manifested and destroyed real
+    # saved data. CIK, not fund name, since it's already a stable,
+    # unambiguous per-fund identifier with no normalization edge cases.
     period_label = filing.period_of_report or filing.accession_number
-    stamped_path = Path(f"data/parsed_rows_{period_label}.json")
+    stamped_path = Path(f"data/parsed_rows_{company.cik}_{period_label}.json")
     with open(stamped_path, "w") as f:
         json.dump(rows, f, indent=2)
 

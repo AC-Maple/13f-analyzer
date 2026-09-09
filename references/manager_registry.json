@@ -32,5 +32,11 @@
     "verified_against": "aum13f.com plus fintool.com, cross-referenced",
     "verified_date": "2026-09-03",
     "note": "AMBIGUOUS NAME -- distinct from Polymer Capital Management (HK) LTD (CIK 1970465). This is the New York entity, ~$802.5M AUM, 535 equity + 54 options positions, founded 2021 by Eric Kemnitz. Holds SPAC-related positions (GS Acquisition Holdings Corp, Fortress Value Acquisition Corp)."
+  },
+  "pinnbrook capital management": {
+    "cik": "1856103",
+    "full_name": "Pinnbrook Capital Management LP",
+    "verified_against": "SEC EDGAR filing history -- CIK 1856103 resolved directly to PINNBROOK CAPITAL MANAGEMENT LP via a real 13F-HR fetch (accession 0001856103-26-000005, period 2026-06-30)",
+    "verified_date": "2026-09-08"
   }
 }
