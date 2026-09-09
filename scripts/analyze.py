@@ -464,6 +464,53 @@ def compute_index_hedge_ratio(positions):
     }
 
 
+NON_BROAD_INDEX_PUT_CLASSES = {
+    "SECTOR_ETF_PUT": "Sector",
+    "FIXED_INCOME_ETF_PUT": "Fixed Income",
+    "COMMODITY_ETF_PUT": "Commodity",
+    "INTL_REGIONAL_ETF_PUT": "International/Regional",
+}
+
+
+def get_hedge_position_detail(positions):
+    """Per-position breakdown behind the two hedge-ratio aggregates --
+    compute_index_hedge_ratio above only ever returns a single summed
+    dollar figure, with no way to see which specific tickers make it up.
+    Deliberately a separate function rather than a change to the one
+    above: that function is already tested and used for the headline
+    ratio calculation, and this one only ever feeds display, so keeping
+    them apart means a display change can't risk the ratio math.
+
+    Returns broad-market index puts (ETF_INDEX_PUT -- the ones that DO
+    count toward compute_index_hedge_ratio's numerator) and, separately,
+    every non-broad-index ETF put class that function deliberately
+    excludes (sector, fixed-income, commodity, international/regional --
+    see NON_BROAD_INDEX_PUT_CLASSES). Both were found to matter in
+    practice, not just in theory: a real fund's book (Pinnbrook) carried
+    a meaningfully-sized sector ETF put (SMH) AND a fixed-income ETF put
+    (BKLN) simultaneously -- grouping only "sector" and leaving fixed-
+    income/commodity/international invisible would have hidden exactly
+    the kind of position this was built to catch. No ticker here --
+    tickers come from Bloomberg's PARSEKYABLE_DES in market_data.json,
+    which this function's caller (analyze.py) doesn't have; dashboard.py
+    joins that on afterward, the same layering already used everywhere
+    else in this pipeline (position logic here, market-data joins there)."""
+    index_positions = [
+        {"cusip": p["cusip"], "issuer": p["nameOfIssuer"], "value": p["value"]}
+        for p in positions if p["instrumentClass"] == "ETF_INDEX_PUT"
+    ]
+    sector_positions = [
+        {"cusip": p["cusip"], "issuer": p["nameOfIssuer"], "value": p["value"],
+         "category": NON_BROAD_INDEX_PUT_CLASSES[p["instrumentClass"]]}
+        for p in positions if p["instrumentClass"] in NON_BROAD_INDEX_PUT_CLASSES
+    ]
+    return {
+        "indexHedgePositions": sorted(index_positions, key=lambda x: -x["value"]),
+        "sectorHedgePositions": sorted(sector_positions, key=lambda x: -x["value"]),
+        "sectorHedgeTotal": sum(p["value"] for p in sector_positions),
+    }
+
+
 if __name__ == "__main__":
     import sys
 

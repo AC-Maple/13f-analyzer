@@ -107,6 +107,7 @@ const state = {
   sortDir: -1,
   search: '',
   filter: 'all',
+  sectorLevel: 'industry',   // 'industry' (GICS L3) or 'subIndustry' (GICS L4) -- there is no L2/L1 pull in this pipeline
 };
 
 function fmtUSD(v, compact) {
@@ -137,7 +138,6 @@ function qoqCells(qoq) {
 function render() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="demo-banner">DEMO DATA -- issuer names, shares, and liquidity metrics reconstructed from a real prior run; dollar values and exposure figures are illustrative. Run dashboard.py against your own data/ files for live numbers.</div>
     ${renderHeader()}
     ${renderTabs()}
     ${renderControls()}
@@ -184,10 +184,10 @@ function renderHome() {
   return `
   <div class="stats">
     <div class="st"><div class="l">Gross Long</div><div class="v">${fmtUSD(DATA.concentration.fullBookTotal, true)}</div><div class="n">true economic exposure, hedges excluded</div></div>
-    <div class="st"><div class="l">Days to 50% NAV</div><div class="v" style="color:var(--blue)">${r.days50pct20d ?? '\u2014'}d</div><div class="n">@ ${(parseFloat(state.rate)*100).toFixed(0)}% ADV, 20d</div></div>
+    <div class="st"><div class="l">Days to 50% NAV</div><div class="v" style="color:${r.days50pct20d===null?'var(--amb)':'var(--blue)'}">${r.days50pct20d===null?'n/r':r.days50pct20d+'d'}</div><div class="n">${r.days50pct20d===null?fmtPct(r.curve20d.unmodeledPctOfBook)+' of book unmodeled':'@ '+(parseFloat(state.rate)*100).toFixed(0)+'% ADV, 20d'}</div></div>
     <div class="st"><div class="l">Days to 90% NAV</div><div class="v" style="color:${r.days90pct20d===null?'var(--amb)':'var(--txt)'}">${r.days90pct20d ?? 'n/r'}${r.days90pct20d!==null?'d':''}</div><div class="n">${r.days90pct20d===null?'not reached \u2014 see gap':'@ '+(parseFloat(state.rate)*100).toFixed(0)+'% ADV'}</div></div>
     <div class="st"><div class="l">Index Hedge Ratio</div><div class="v">${fmtPct(DATA.hedge.indexHedgeRatioPct)}</div><div class="n">${fmtUSD(DATA.hedge.indexPutNotional,true)} vs ${fmtUSD(DATA.hedge.longBook,true)}</div></div>
-    <div class="st"><div class="l">Compounding Illiquidity</div><div class="v" style="color:${DATA.compoundingFlags.length>15?'var(--red)':'var(--amb)'}">${DATA.compoundingFlags.length}</div><div class="n">positions flagged</div></div>
+    <div class="st" title="Both conditions required: days-to-liquidate >= 20 days (20-day ADV window, current participation rate) AND 20-day ADV below 3-month ADV (volume declining relative to its own recent history). Not just slow to exit -- slow and getting slower."><div class="l">Compounding Illiquidity</div><div class="v" style="color:${DATA.compoundingFlags.length>15?'var(--red)':'var(--amb)'}">${DATA.compoundingFlags.length}</div><div class="n">positions flagged \u2014 hover for definition</div></div>
     <div class="st"><div class="l">Top 10 Concentration</div><div class="v">${fmtPct(DATA.top10ByBook.reduce((a,e)=>a+(e.pctFullBook||0),0))}</div><div class="n">of full book</div></div>
   </div>
 
@@ -208,7 +208,7 @@ function renderHome() {
       </div>
     </div>
     <div class="card">
-      <div class="card-head"><span class="card-title">Top Liquidity Risks</span><span class="card-note">by days-to-liquidate, 20d</span></div>
+      <div class="card-head"><span class="card-title" title="Top 5 by days-to-liquidate among positions flagged for compounding illiquidity -- see the KPI tile above for the exact definition.">Top Liquidity Risks</span><span class="card-note">by days-to-liquidate, 20d</span></div>
       <div class="card-body">
         <table><thead><tr><th class="l">Position</th><th>Days</th><th>Vol Trend</th></tr></thead><tbody>
         ${top5risk.map(p => `<tr class="${p.concentratedAndIlliquid?'row-crit':'row-warn'}">
@@ -307,14 +307,28 @@ function renderExposure() {
     </div>
     <div>
       <div class="card">
-        <div class="card-head"><span class="card-title">Index Hedge Ratio</span></div>
+        <div class="card-head"><span class="card-title">Index Hedge Ratio</span><span class="card-note">broad-market only</span></div>
         <div class="card-body">
           <div class="stat-row"><span class="stat-label">Index put notional</span><span class="stat-value">${fmtUSD(DATA.hedge.indexPutNotional)}</span></div>
           <div class="stat-row"><span class="stat-label">Long book</span><span class="stat-value">${fmtUSD(DATA.hedge.longBook)}</span></div>
           <div class="hedge-bar-track"><div class="hedge-bar-fill" style="width:${Math.min(DATA.hedge.indexHedgeRatioPct,100)}%"></div></div>
           <div class="stat-row" style="border:none;padding-top:10px"><span class="stat-label">Ratio</span><span class="stat-value" style="font-size:16px;color:var(--blue)">${fmtPct(DATA.hedge.indexHedgeRatioPct)}</span></div>
+          ${DATA.hedgeDetail.indexHedgePositions.length ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+            ${DATA.hedgeDetail.indexHedgePositions.map(p => `<div class="stat-row"><span class="stat-label"><span class="issuer">${p.ticker?esc(p.ticker):'\u2014'}</span> <span class="z" style="font-size:11px">${esc(p.issuer)}</span></span><span class="stat-value">${fmtUSD(p.value,true)}</span></div>`).join('')}
+          </div>` : ''}
         </div>
-        <div class="section-note">Sector, fixed-income, and commodity fund puts excluded by design \u2014 only broad-market index hedges count.</div>
+        <div class="section-note">Sector, fixed-income, commodity, and international/regional fund puts excluded by design \u2014 only broad-market index hedges count here. See the box below for the rest.</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Sector &amp; Other ETF Hedges</span><span class="card-note">excluded from the index ratio above</span></div>
+        <div class="card-body">
+          ${DATA.hedgeDetail.sectorHedgePositions.length === 0 ? '<span class="card-note">None in this book.</span>' : `
+          <div class="stat-row"><span class="stat-label">Total notional</span><span class="stat-value" style="font-size:16px;color:var(--amb)">${fmtUSD(DATA.hedgeDetail.sectorHedgeTotal)}</span></div>
+          <div style="margin-top:8px">
+            ${DATA.hedgeDetail.sectorHedgePositions.map(p => `<div class="stat-row"><span class="stat-label"><span class="issuer">${p.ticker?esc(p.ticker):'\u2014'}</span> <span class="z" style="font-size:11px">${esc(p.issuer)} \u00b7 ${esc(p.category)}</span></span><span class="stat-value">${fmtUSD(p.value,true)}</span></div>`).join('')}
+          </div>`}
+        </div>
+        <div class="section-note">Sector, fixed-income, commodity, and international/regional ETF puts \u2014 each tagged with its specific type. These are real hedge/positioning exposure, just not broad-market, so they're kept separate from the ratio above rather than mixed into it.</div>
       </div>
       <div class="card">
         <div class="card-head"><span class="card-title">Related Security Families</span><span class="card-note">same issuer, different CUSIPs</span></div>
@@ -329,7 +343,48 @@ function renderExposure() {
       </div>
     </div>
   </div>
+  ${renderSectorConcentration()}
   `;
+}
+
+function renderSectorConcentration() {
+  const sc = DATA.sectorConcentration[state.sectorLevel];
+  // Unclassified always shown on its own row, regardless of its rank --
+  // a coverage gap folded silently into "Other" would hide exactly the
+  // thing this bucket exists to surface (see analyze.py's own docstring
+  // on this). Only the remaining classified sectors get top-10-plus-Other.
+  const unclassified = sc.ranked.find(s => s.sector === 'Unclassified');
+  const classified = sc.ranked.filter(s => s.sector !== 'Unclassified');
+  const top = classified.slice(0, 10);
+  const rest = classified.slice(10);
+  const otherTotal = rest.reduce((a, s) => a + s.trueLongExposure, 0);
+  const otherPct = rest.reduce((a, s) => a + (s.pctFullBook || 0), 0);
+  const otherCount = rest.reduce((a, s) => a + s.positionCount, 0);
+  const maxPct = top.length ? top[0].pctFullBook : 0;
+
+  return `
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Sector Concentration</span>
+      <span class="card-note">
+        <button class="basis-btn ${state.sectorLevel==='industry'?'on':''}" data-sector-level="industry">Industry</button>
+        <button class="basis-btn ${state.sectorLevel==='subIndustry'?'on':''}" data-sector-level="subIndustry">Sub-Industry</button>
+        &nbsp; ${sc.sectorCount} total sectors at this level
+      </span>
+    </div>
+    <div class="card-body">
+      ${top.map(s => `<div style="margin-bottom:9px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+          <span class="issuer">${esc(s.sector)}</span>
+          <span class="num">${fmtPct(s.pctFullBook,2)} \u00b7 ${fmtUSD(s.trueLongExposure,true)} \u00b7 ${s.positionCount} pos</span>
+        </div>
+        <div class="hedge-bar-track"><div class="hedge-bar-fill" style="width:${maxPct?(s.pctFullBook/maxPct*100):0}%"></div></div>
+      </div>`).join('')}
+      ${rest.length ? `<div class="stat-row" style="margin-top:8px"><span class="stat-label">Other (${rest.length} smaller sectors)</span><span class="stat-value">${fmtPct(otherPct,2)} \u00b7 ${fmtUSD(otherTotal,true)} \u00b7 ${otherCount} pos</span></div>` : ''}
+      ${unclassified ? `<div class="stat-row" style="color:var(--amb)"><span class="stat-label" style="color:var(--amb)">Unclassified</span><span class="stat-value">${fmtPct(unclassified.pctFullBook,2)} \u00b7 ${fmtUSD(unclassified.trueLongExposure,true)} \u00b7 ${unclassified.positionCount} pos</span></div>` : ''}
+    </div>
+    <div class="section-note">Grouped by GICS ${state.sectorLevel==='industry'?'Industry (Level 3)':'Sub-Industry (Level 4)'}, on true long exposure with hedges excluded \u2014 same population and denominator as every other exposure figure on this page. Unclassified is a real Bloomberg coverage gap, shown explicitly rather than folded into "Other."</div>
+  </div>`;
 }
 
 function renderPositions() {
@@ -352,8 +407,10 @@ function renderPositions() {
     return (av - bv) * state.sortDir;
   });
   const cols = [
+    ['ticker','Ticker',false],
     ['issuer','Issuer',false],['shares','Shares',true],['verifiedValue','Value',true],
     ['verifiedPrice','Price',true],
+    ['pctOfBook','% Fund',true],
     ['daysToLiquidate_20d','Days (20d)',true],['daysToLiquidate_3m','Days (3m)',true],
     ['volumeTrendPct','Vol Trend',true],['pctSharesOutstanding','% SO',true],
   ];
@@ -363,7 +420,7 @@ function renderPositions() {
       <div class="table-controls">
         <input class="search-input" id="pos-search" placeholder="Search issuer\u2026" value="${esc(state.search)}">
         <div class="filter-chip ${state.filter==='all'?'on':''}" data-filter="all">All</div>
-        <div class="filter-chip ${state.filter==='flagged'?'on':''}" data-filter="flagged">Compounding illiquidity</div>
+        <div class="filter-chip ${state.filter==='flagged'?'on':''}" data-filter="flagged" title="Days-to-liquidate >= 20 days AND 20-day ADV below 3-month ADV -- both required.">Compounding illiquidity</div>
         <div class="filter-chip ${state.filter==='threshold'?'on':''}" data-filter="threshold">Threshold proximity</div>
         ${DATA.qoqAvailable ? `<div class="filter-chip ${state.filter==='new'?'on':''}" data-filter="new">New</div>
         <div class="filter-chip ${state.filter==='increased'?'on':''}" data-filter="increased">Increased</div>
@@ -375,10 +432,12 @@ function renderPositions() {
         ${DATA.qoqAvailable ? '<th>QoQ</th><th>Shares \u0394</th>' : ''}
       </tr></thead><tbody>
       ${rows.slice(0, 100).map(p => `<tr class="${p.concentratedAndIlliquid?'row-crit':p.compoundingIlliquidity?'row-warn':''}">
+        <td class="l issuer">${p.ticker ? esc(p.ticker) : '<span class="z">\u2014</span>'}</td>
         <td class="l issuer">${esc(p.issuer)}${p.callSharesIncluded ? ` <span class="opt" title="includes ${p.callSharesIncluded.toLocaleString()} call shares">+opt</span>` : ''}${p.reenteredAfterClose ? ` <span class="badge" style="background:rgba(188,140,255,.14);color:var(--pur)" title="closed at some point in this window, then reopened">reentered</span>` : ''}</td>
         <td>${p.shares.toLocaleString()}</td>
         <td>${fmtUSD(p.verifiedValue, true)}</td>
         <td>$${p.verifiedPrice.toFixed(2)}</td>
+        <td>${p.pctOfBook !== null && p.pctOfBook !== undefined ? p.pctOfBook.toFixed(2)+'%' : '\u2014'}</td>
         <td><span class="badge ${daysBadgeClass(p.daysToLiquidate_20d)}">${fmtDays(p.daysToLiquidate_20d)}</span></td>
         <td><span class="badge ${daysBadgeClass(p.daysToLiquidate_3m)}">${fmtDays(p.daysToLiquidate_3m)}</span></td>
         <td class="${p.volumeTrendPct<0?'dn':'up'}">${fmtPct(p.volumeTrendPct)}</td>
@@ -403,6 +462,7 @@ function attachEvents() {
   document.querySelectorAll('[data-tab]').forEach(el => el.onclick = () => { state.tab = el.dataset.tab; render(); });
   document.querySelectorAll('[data-rate]').forEach(el => el.onclick = () => { state.rate = el.dataset.rate; render(); });
   document.querySelectorAll('[data-basis]').forEach(el => el.onclick = () => { state.basis = el.dataset.basis; render(); });
+  document.querySelectorAll('[data-sector-level]').forEach(el => el.onclick = () => { state.sectorLevel = el.dataset.sectorLevel; render(); });
   document.querySelectorAll('[data-k]').forEach(el => el.onclick = () => {
     const k = el.dataset.k;
     if (state.sortKey === k) state.sortDir *= -1; else { state.sortKey = k; state.sortDir = -1; }

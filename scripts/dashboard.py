@@ -33,6 +33,7 @@ from analyze import (
     aggregate_to_economic_positions, compute_true_long_exposure,
     compute_concentration, compute_index_hedge_ratio, flag_related_security_families,
     compute_position_status, chain_position_status, compute_sector_concentration,
+    get_hedge_position_detail,
 )
 from liquidity import (
     load_market_data, compute_liquidity, bucket_summary, discrete_bucket_summary,
@@ -52,11 +53,26 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     heldAllQuarters, netSharesChangePct) via chain_position_status, which
     calls the same tested pairwise function once per consecutive pair --
     no new comparison logic for the N-quarter case, just more calls to it."""
+    def ticker_from_market_data(cusip):
+        """Clean ticker parsed from Bloomberg's PARSEKYABLE_DES ("NVDA US
+        Equity" -> "NVDA") -- already-verified field (see SKILL.md), just
+        never previously surfaced as a display ticker anywhere. None if
+        the CUSIP has no market data or PARSEKYABLE_DES didn't resolve --
+        shown as an em dash downstream, never guessed or left blank
+        silently."""
+        m = market_data.get(cusip)
+        if not m or not m.get("PARSEKYABLE_DES") or m.get("PARSEKYABLE_DES_status") != "PASS":
+            return None
+        return m["PARSEKYABLE_DES"].split(" ")[0]
+
     positions = aggregate_to_economic_positions(classified_rows)
 
     exposures = compute_true_long_exposure(positions)
     concentration = compute_concentration(exposures)
     hedge = compute_index_hedge_ratio(positions)
+    hedge_detail = get_hedge_position_detail(positions)
+    for p in hedge_detail["indexHedgePositions"] + hedge_detail["sectorHedgePositions"]:
+        p["ticker"] = ticker_from_market_data(p["cusip"])
     families = flag_related_security_families(positions)
 
     # Top 10 by % of full book -- distinct from "top liquidity risks"
@@ -164,6 +180,19 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
                 r["reenteredAfterClose"] = c["reenteredAfterClose"] if c else False
                 r["heldAllQuarters"] = c["heldAllQuarters"] if c else None
                 r["netSharesChangePct"] = c["netSharesChangePct"] if c else None
+                # % of fund size -- same denominator as every other "% of
+                # book" figure on this dashboard (concentration.fullBookTotal,
+                # hedges excluded), not the raw SEC-reported total. Computed
+                # against THIS row's own verifiedValue (common-only, exactly
+                # what's displayed) rather than reusing exposures' netted
+                # trueLongExposure -- a position with a call overlay would
+                # otherwise show a % that doesn't match value/total using
+                # the number actually printed in the same row.
+                r["pctOfBook"] = (
+                    round(r["verifiedValue"] / concentration["fullBookTotal"] * 100, 3)
+                    if concentration["fullBookTotal"] else None
+                )
+                r["ticker"] = ticker_from_market_data(r["cusip"])
             curve_20d = compute_liquidation_curve(liquidity_records, positions, window="20d")
             curve_3m = compute_liquidation_curve(liquidity_records, positions, window="3m")
             by_rate[str(rate)] = {
@@ -206,6 +235,7 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         "top10ByBook": top10_by_book,
         "sectorConcentration": sector_concentration,
         "hedge": hedge,
+        "hedgeDetail": hedge_detail,
         "families": families,
         "byBasis": by_basis,
         "defaultBasis": default_basis,
