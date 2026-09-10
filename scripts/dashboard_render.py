@@ -484,7 +484,7 @@ function renderPositions() {
       </tr></thead><tbody>
       ${rows.slice(0, 100).map(p => `<tr class="${p.concentratedAndIlliquid?'row-crit':p.compoundingIlliquidity?'row-warn':''}">
         <td class="l issuer">${p.ticker ? esc(p.ticker) : '<span class="z">\u2014</span>'}</td>
-        <td class="l issuer">${esc(p.issuer)}${p.callSharesIncluded ? ` <span class="opt" title="includes ${p.callSharesIncluded.toLocaleString()} call shares">+opt</span>` : ''}${p.reenteredAfterClose ? ` <span class="badge" style="background:rgba(188,140,255,.14);color:var(--pur)" title="closed at some point in this window, then reopened">reentered</span>` : ''}</td>
+        <td class="l issuer">${esc(p.issuer)}${p.callSharesIncluded ? ` <span class="opt" title="includes ${p.callSharesIncluded.toLocaleString()} call shares">+opt</span>` : ''}${p.reenteredAfterClose ? ` <span class="badge" style="background:rgba(188,140,255,.14);color:var(--pur)" title="closed at some point in this window, then reopened">reentered</span>` : ''}${p.liquidityOverrideReason ? ` <span class="badge" style="background:rgba(63,185,80,.14);color:var(--grn)" title="${esc(p.liquidityOverrideReason)}">cash claim</span>` : ''}</td>
         <td>${p.shares.toLocaleString()}</td>
         <td>${fmtUSD(p.verifiedValue, true)}</td>
         <td>$${p.verifiedPrice.toFixed(2)}</td>

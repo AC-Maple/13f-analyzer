@@ -46,6 +46,14 @@ ADV_ELIGIBLE_CLASSES = {
     "COMMODITY_ETF", "INTL_REGIONAL_ETF", "FUND_UNVERIFIED",
 }
 
+# A market-data field is usable either as a genuine live Bloomberg PASS,
+# or as PASS_HUMAN_CORRECTED -- a value a human explicitly reviewed and
+# replaced via resolution_log.py's CORRECT decision (import_bloomberg_data.py),
+# never silently guessed. Both are trustworthy; REVIEW_MARKET_DATA,
+# PENDING_EXTERNAL_DATA, and NOT_APPLICABLE are not, regardless of
+# whether a number happens to be sitting in the field.
+USABLE_MARKET_DATA_STATUSES = ("PASS", "PASS_HUMAN_CORRECTED")
+
 DAYS_TO_LIQUIDATE_BUCKETS = [10, 20, 50]  # matches the worked table in SKILL.md gap #4
 COMPOUNDING_ILLIQUIDITY_DAYS_THRESHOLD = 20  # matches the ">=20 days" bucket
 
@@ -123,7 +131,7 @@ def compute_liquidity(positions, market_data, participation_rate=0.15, position_
         adv_20d = md.get("VOLUME_AVG_20D")
         adv_3m = md.get("VOLUME_AVG_3M")
 
-        if price is None or md.get("PX_LAST_status") != "PASS":
+        if price is None or md.get("PX_LAST_status") not in USABLE_MARKET_DATA_STATUSES:
             excluded.append({
                 "cusip": p["cusip"], "issuer": p["nameOfIssuer"],
                 "instrumentClass": p["instrumentClass"],
@@ -155,7 +163,7 @@ def compute_liquidity(positions, market_data, participation_rate=0.15, position_
         # Bloomberg fields agreeing confirms the unit; the column header
         # alone would only be an assumption.
         shares_out = md.get("EQY_SH_OUT")
-        if shares_out is not None and md.get("EQY_SH_OUT_status") == "PASS" and shares_out > 0:
+        if shares_out is not None and md.get("EQY_SH_OUT_status") in USABLE_MARKET_DATA_STATUSES and shares_out > 0:
             pct_so = round(p["shares"] / (shares_out * 1_000_000) * 100, 3)
             record["sharesOutstanding"] = shares_out * 1_000_000
             record["pctSharesOutstanding"] = pct_so
@@ -170,33 +178,53 @@ def compute_liquidity(positions, market_data, participation_rate=0.15, position_
             record["pctSharesOutstanding"] = None
             record["thresholdProximityFlag"] = None
 
-        for window, adv, status_key in (
-            ("20d", adv_20d, "VOLUME_AVG_20D_status"),
-            ("3m", adv_3m, "VOLUME_AVG_3M_status"),
-        ):
-            if adv is None or md.get(status_key) != "PASS" or adv <= 0:
-                record[f"daysToLiquidate_{window}"] = None
-                record[f"adv_{window}"] = None
-                continue
-            record[f"adv_{window}"] = adv
-            record[f"daysToLiquidate_{window}"] = round(
-                liquidation_shares / (adv * participation_rate), 1
-            )
-
-        # Compounding illiquidity: high days-to-liquidate AND 20d ADV
-        # below 3m ADV (volume declining), per SKILL.md's stated
-        # definition. Requires BOTH windows to have resolved.
-        d20, d3m = record["daysToLiquidate_20d"], record["daysToLiquidate_3m"]
-        a20, a3m = record["adv_20d"], record["adv_3m"]
-        if None not in (d20, a20, a3m):
-            volume_declining = a20 < a3m
-            record["volumeTrendPct"] = round((a20 - a3m) / a3m * 100, 1)
-            record["compoundingIlliquidity"] = (
-                d20 >= COMPOUNDING_ILLIQUIDITY_DAYS_THRESHOLD and volume_declining
-            )
-        else:
+        # Liquidity override -- a human-confirmed fact (e.g. a closed,
+        # all-cash merger) that makes the normal ADV-based calculation
+        # actively wrong to attempt, not just uncertain. Checked before
+        # the window loop and skips it entirely rather than feeding it a
+        # fabricated ADV: no finite ADV makes shares/(adv*rate) equal
+        # exactly 0, so "0 days to liquidate" for a cash claim can only
+        # be expressed as a direct override, never as a corrected volume.
+        if md.get("liquidityOverride"):
+            record["daysToLiquidate_20d"] = 0.0
+            record["daysToLiquidate_3m"] = 0.0
+            record["adv_20d"] = None
+            record["adv_3m"] = None
             record["volumeTrendPct"] = None
-            record["compoundingIlliquidity"] = None
+            # Known, not unresolved -- a position confirmed to be an
+            # immediate cash claim is definitionally not compounding-
+            # illiquid, which is a different statement from "we don't
+            # have enough data to tell" (the None case just below).
+            record["compoundingIlliquidity"] = False
+            record["liquidityOverrideReason"] = md.get("liquidityOverrideSource")
+        else:
+            for window, adv, status_key in (
+                ("20d", adv_20d, "VOLUME_AVG_20D_status"),
+                ("3m", adv_3m, "VOLUME_AVG_3M_status"),
+            ):
+                if adv is None or md.get(status_key) not in USABLE_MARKET_DATA_STATUSES or adv <= 0:
+                    record[f"daysToLiquidate_{window}"] = None
+                    record[f"adv_{window}"] = None
+                    continue
+                record[f"adv_{window}"] = adv
+                record[f"daysToLiquidate_{window}"] = round(
+                    liquidation_shares / (adv * participation_rate), 1
+                )
+
+            # Compounding illiquidity: high days-to-liquidate AND 20d ADV
+            # below 3m ADV (volume declining), per SKILL.md's stated
+            # definition. Requires BOTH windows to have resolved.
+            d20, d3m = record["daysToLiquidate_20d"], record["daysToLiquidate_3m"]
+            a20, a3m = record["adv_20d"], record["adv_3m"]
+            if None not in (d20, a20, a3m):
+                volume_declining = a20 < a3m
+                record["volumeTrendPct"] = round((a20 - a3m) / a3m * 100, 1)
+                record["compoundingIlliquidity"] = (
+                    d20 >= COMPOUNDING_ILLIQUIDITY_DAYS_THRESHOLD and volume_declining
+                )
+            else:
+                record["volumeTrendPct"] = None
+                record["compoundingIlliquidity"] = None
 
         # The combination the source proposal's item 6 was actually
         # after: a position that's both hard to exit AND sitting at a
