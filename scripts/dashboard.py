@@ -107,8 +107,8 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     # quarters the user may not have fetched yet. Share-count based, per
     # gap #2: a value change can be pure mark-to-market, a share change
     # is the manager doing something.
-    position_status_by_cusip = {}   # immediate (latest) transition only -- feeds the existing per-liquidity-record "qoq" field, unchanged shape
-    chain_by_cusip = {}             # CUSIP-keyed, for joining onto liquidity records only -- see note below
+    position_status_by_security_id = {}   # (cusip, instrumentClass)-keyed -- see note below for why cusip-alone was wrong
+    chain_by_security_id = {}             # (cusip, instrumentClass)-keyed, for joining onto liquidity records -- see note below
     quarter_labels = []
     reentered_count = 0
     held_all_count = 0
@@ -123,7 +123,7 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         chain = chain_position_status(quarters)
 
         # Summary counts computed from the full per-Security-ID chain,
-        # NOT from chain_by_cusip below. Found by testing against a real
+        # NOT from chain_by_security_id below. Found by testing against a real
         # options-heavy fund (Pinnbrook): chain_position_status returns
         # one record per (cusip, instrumentClass), so a CUSIP holding
         # both COMMON and CALL rows produces two chain records -- if a
@@ -140,17 +140,30 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         held_all_count = sum(1 for c in chain if c["heldAllQuarters"])
 
         for c in chain:
-            # This dict IS still legitimately CUSIP-keyed, unlike the
-            # summary counts above -- it only ever feeds a liquidity
-            # record lookup (line ~141 below), and every liquidity
-            # record is itself COMMON-only per CUSIP (per compute_liquidity's
-            # own convention), so a CUSIP with multiple instrument classes
-            # collapsing to one entry here changes nothing observable:
-            # only the COMMON leg's chain data is ever actually joined
-            # onto anything downstream of this dict.
-            chain_by_cusip[c["cusip"]] = c
+            # Keyed by (cusip, instrumentClass) -- the actual Security ID,
+            # matching what chain_position_status itself returns one
+            # record per. A prior version of this dict was CUSIP-only,
+            # reasoned to be safe because "every liquidity record is
+            # itself COMMON-only per CUSIP" -- found wrong on real data
+            # (Melqart): a CUSIP whose instrumentClass genuinely changes
+            # between quarters -- here, Global X Uranium ETF (CUSIP
+            # 37954Y871) classified as COMMON in Q1 2026 and SECTOR_ETF
+            # in Q2 2026, after a mid-pipeline FUND_CUSIP_MAP fix was
+            # added between those two classification runs -- produces
+            # TWO Security IDs sharing one CUSIP: (cusip, COMMON) whose
+            # last transition is CLOSED, and (cusip, SECTOR_ETF) whose
+            # last transition is NEW. The CUSIP-only dict let whichever
+            # one iteration processed last silently overwrite the other,
+            # so the real, current SECTOR_ETF liquidity record displayed
+            # the OTHER Security ID's CLOSED status instead of its own
+            # NEW one. This isn't a freak one-off: a CUSIP moving from
+            # FUND_UNVERIFIED to a verified class between quarters, as
+            # this pipeline's own FUND_UNVERIFIED workflow explicitly
+            # expects and encourages, hits the identical shape.
+            key = (c["cusip"], c["instrumentClass"])
+            chain_by_security_id[key] = c
             last_t = c["transitions"][-1]
-            position_status_by_cusip[c["cusip"]] = {
+            position_status_by_security_id[key] = {
                 "status": last_t["status"], "sharesChangePct": last_t["sharesChangePct"],
                 "oldShares": last_t["oldShares"], "newShares": last_t["newShares"],
             }
@@ -181,17 +194,18 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         for rate in PARTICIPATION_RATES:
             liquidity_records, excluded = compute_liquidity(positions, market_data, rate, basis)
             for r in liquidity_records:
-                s = position_status_by_cusip.get(r["cusip"])
+                security_id = (r["cusip"], r["instrumentClass"])
+                s = position_status_by_security_id.get(security_id)
                 r["qoq"] = {
                     "status": s["status"], "sharesChangePct": s["sharesChangePct"],
                     "oldShares": s["oldShares"], "newShares": s["newShares"],
                 } if s else None
                 # Full chain, only when 2+ total quarters were supplied
-                # (chain_by_cusip is empty otherwise) -- carries the
+                # (chain_by_security_id is empty otherwise) -- carries the
                 # signals a single "qoq" transition can't: has this
                 # position been closed and reopened, has it been held
                 # every quarter in the window.
-                c = chain_by_cusip.get(r["cusip"])
+                c = chain_by_security_id.get(security_id)
                 r["reenteredAfterClose"] = c["reenteredAfterClose"] if c else False
                 r["heldAllQuarters"] = c["heldAllQuarters"] if c else None
                 r["netSharesChangePct"] = c["netSharesChangePct"] if c else None

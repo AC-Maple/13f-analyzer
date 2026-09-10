@@ -614,7 +614,7 @@ function drawMatrix() {
   const el = document.getElementById('matrix-chart');
   const points = currentRateData().liquidity.filter(p => p.pctSharesOutstanding !== null && p.daysToLiquidate_20d !== null);
   if (!points.length) { el.innerHTML = '<span class="card-note">No positions with both ownership % and liquidity data.</span>'; return; }
-  const W = el.clientWidth || 480, H = 300, PAD = { l: 44, r: 16, t: 16, b: 30 };
+  const W = el.clientWidth || 480, H = 320, PAD = { l: 62, r: 16, t: 16, b: 46 };
   const maxX = Math.max(...points.map(p=>p.pctSharesOutstanding), 5) * 1.1;
   const maxYRaw = Math.max(...points.map(p=>p.daysToLiquidate_20d), 10);
   const yScale = v => Math.log10(v+1), maxY = yScale(maxYRaw)*1.1;
@@ -625,11 +625,22 @@ function drawMatrix() {
   svg.appendChild(svgEl('line', { class:'gridline', x1:midX,x2:midX,y1:PAD.t,y2:H-PAD.b }));
   svg.appendChild(svgEl('line', { class:'gridline', x1:PAD.l,x2:W-PAD.r,y1:midY,y2:midY }));
   [1,10,100,1000].filter(v=>v<=maxYRaw*1.2).forEach(v => {
-    const t = svgEl('text', { class:'axislabel', x:4, y:y(v)+3 }); t.textContent = v+'d'; svg.appendChild(t);
+    const t = svgEl('text', { class:'axislabel', x:24, y:y(v)+3 }); t.textContent = v+'d'; svg.appendChild(t);
   });
   [0,maxX/2,maxX].forEach(v => {
-    const t = svgEl('text', { class:'axislabel', x:x(v), y:H-8, 'text-anchor':'middle' }); t.textContent = v.toFixed(1)+'%'; svg.appendChild(t);
+    const t = svgEl('text', { class:'axislabel', x:x(v), y:H-PAD.b+16, 'text-anchor':'middle' }); t.textContent = v.toFixed(1)+'%'; svg.appendChild(t);
   });
+  // Axis titles -- distinct from the tick-value labels above, which say
+  // WHAT the numbers are but not what the axis itself represents. Y-axis
+  // explicitly flags the log scale so a reader doesn't misread linear
+  // spacing between gridlines as equal real-world distance. Positioned
+  // clear of the tick labels (x:24 above vs x:8 here) after the first
+  // version overlapped them directly -- caught by actually rendering
+  // and looking, not assumed correct from the code alone.
+  const xTitle = svgEl('text', { class:'axislabel', x:(PAD.l+W-PAD.r)/2, y:H-6, 'text-anchor':'middle', style:'font-size:11px' });
+  xTitle.textContent = '% Shares Outstanding (ownership stake)'; svg.appendChild(xTitle);
+  const yTitle = svgEl('text', { class:'axislabel', x:8, y:(PAD.t+H-PAD.b)/2, 'text-anchor':'middle', style:'font-size:11px', transform:`rotate(-90 8 ${(PAD.t+H-PAD.b)/2})` });
+  yTitle.textContent = 'Days to Liquidate (log scale)'; svg.appendChild(yTitle);
   const tooltip = document.createElement('div'); tooltip.className = 'tooltip';
   points.forEach(p => {
     const critical = p.pctSharesOutstanding > maxX/2 && p.daysToLiquidate_20d > 10;

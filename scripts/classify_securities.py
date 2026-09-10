@@ -88,6 +88,20 @@ FUND_CUSIP_MAP = {
     # product is a credit/rates hedge, the same category as TLT/HYG,
     # not an equity-sector one.
     "46138G508": "FIXED_INCOME_ETF", # Invesco Senior Loan ETF (BKLN)
+    # Verified directly from the filing's own titleOfClass text
+    # ("GLOBAL X URANIUM"), 2026-09-10, from Melqart Asset Management's
+    # real Q2 2026 filing -- found as silently miscounted plain COMMON
+    # before this entry existed, because "GLOBAL X" isn't in
+    # ETF_SPONSOR_PATTERN below (only this specific verified CUSIP
+    # added, not the sponsor name -- same precedent as VANECK above:
+    # any other Global X fund this or another filing holds still
+    # correctly falls to FUND_UNVERIFIED for one-time human
+    # confirmation, not auto-guessed). SECTOR_ETF, not COMMODITY_ETF --
+    # Global X Uranium ETF (URA) holds equity of uranium mining/nuclear
+    # fuel companies, not physical uranium, the same distinction that
+    # already separates XLE/XOP (equity-sector) from GLD/SLV/USO/UNG
+    # (physical-commodity) above.
+    "37954Y871": "SECTOR_ETF",      # Global X Uranium ETF (URA)
 }
 
 # Fund-sponsor name pattern, checked against BOTH nameOfIssuer and
