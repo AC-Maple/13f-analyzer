@@ -38,5 +38,17 @@
     "full_name": "Pinnbrook Capital Management LP",
     "verified_against": "SEC EDGAR filing history -- CIK 1856103 resolved directly to PINNBROOK CAPITAL MANAGEMENT LP via a real 13F-HR fetch (accession 0001856103-26-000005, period 2026-06-30)",
     "verified_date": "2026-09-08"
+  },
+  "scge management": {
+    "cik": "1537530",
+    "full_name": "SCGE Management, L.P.",
+    "verified_against": "SEC EDGAR's own company page (user-verified) -- CIK 1537530 resolved directly to SCGE MANAGEMENT, L.P. via a real 13F-HR fetch (accession 0000905148-26-003747, period 2026-06-30)",
+    "verified_date": "2026-09-10"
+  },
+  "melqart asset management": {
+    "cik": "1712901",
+    "full_name": "Melqart Asset Management (UK) Ltd",
+    "verified_against": "Two separate SEC EDGAR filing pages (user-verified) -- CIK 1712901 resolved directly to Melqart Asset Management (UK) Ltd via a real 13F-HR fetch (accession 0001172661-26-003634, period 2026-06-30)",
+    "verified_date": "2026-09-10"
   }
 }
