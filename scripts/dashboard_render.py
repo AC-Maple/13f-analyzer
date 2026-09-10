@@ -145,6 +145,7 @@ function render() {
     <div class="tabpanel ${state.tab==='liq'?'on':''}">${renderLiquidity()}</div>
     <div class="tabpanel ${state.tab==='exp'?'on':''}">${renderExposure()}</div>
     <div class="tabpanel ${state.tab==='pos'?'on':''}">${renderPositions()}</div>
+    ${DATA.trendsAvailable ? `<div class="tabpanel ${state.tab==='trends'?'on':''}">${renderTrends()}</div>` : ''}
     ${renderFooter()}
   `;
   attachEvents();
@@ -162,6 +163,7 @@ function renderHeader() {
 
 function renderTabs() {
   const tabs = [['home','Home'],['liq','Liquidity'],['exp','Exposure & Hedging'],['pos','Positions']];
+  if (DATA.trendsAvailable) tabs.push(['trends','Trends']);
   return `<div class="tabbar">${tabs.map(([k,l]) => `<div class="tabbtn ${state.tab===k?'on':''}" data-tab="${k}">${l}</div>`).join('')}</div>`;
 }
 
@@ -387,6 +389,55 @@ function renderSectorConcentration() {
   </div>`;
 }
 
+function renderTrends() {
+  const quarters = DATA.trendsOverTime;  // chronological, oldest first
+  const current = quarters[quarters.length - 1];
+  const topSectors = current.sectorConcentration.industry.ranked
+    .filter(s => s.sector !== 'Unclassified')
+    .slice(0, 8);
+
+  return `
+  <div class="card">
+    <div class="card-head"><span class="card-title">Key Metrics Over Time</span><span class="card-note">${quarters.length} quarters: ${quarters.map(q=>q.quarter).join(' \u2192 ')}</span></div>
+    <div class="card-body">
+      <table><thead><tr><th class="l">Quarter</th><th>Gross Long</th><th>Positions</th><th>Index Hedge Ratio</th><th>Top 5 %</th><th>Top 10 %</th><th>Top 20 %</th></tr></thead><tbody>
+      ${quarters.map(q => `<tr>
+        <td class="l issuer">${esc(q.quarter)}</td>
+        <td>${fmtUSD(q.grossLong,true)}</td>
+        <td>${q.positionCount}</td>
+        <td>${fmtPct(q.indexHedgeRatioPct)}</td>
+        <td>${fmtPct(q.top5PctOfFullBook,2)}</td>
+        <td>${fmtPct(q.top10PctOfFullBook,2)}</td>
+        <td>${fmtPct(q.top20PctOfFullBook,2)}</td>
+      </tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div class="section-note">Gross Long and concentration depend only on each quarter's own SEC-reported values \u2014 no current-day data applied retroactively, unlike the sector table below.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="card-title">Hedge Ratio &amp; Concentration Trend</span><span class="card-note">% scale</span></div>
+    <div class="card-body"><div class="chartwrap" id="trends-chart"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="card-title">Sector Rotation</span><span class="card-note">top 8 current sectors, tracked back across the window</span></div>
+    <div class="card-body">
+      <table><thead><tr><th class="l">Sector</th>${quarters.map(q=>`<th>${esc(q.quarter)}</th>`).join('')}</tr></thead><tbody>
+      ${topSectors.map(s => {
+        const values = quarters.map(q => {
+          const match = q.sectorConcentration.industry.ranked.find(x => x.sector === s.sector);
+          return match ? match.pctFullBook : 0;
+        });
+        return `<tr><td class="l issuer">${esc(s.sector)}</td>${values.map(v=>`<td>${v.toFixed(2)}%</td>`).join('')}</tr>`;
+      }).join('')}
+      </tbody></table>
+    </div>
+    <div class="section-note">Uses the CURRENT quarter's GICS mapping applied retroactively to every quarter shown \u2014 there is no historical Bloomberg snapshot for prior quarters. A stable operating company's classification rarely changes quarter to quarter, but this is a stated approximation, not an independently-verified historical record (see trends.py / SKILL.md). A position that was later acquired, delisted, or had a CUSIP change will look artificially "Unclassified" in earlier quarters even if it was well-covered at the time.</div>
+  </div>
+  `;
+}
+
 function renderPositions() {
   const r = currentRateData();
   let rows = [...r.liquidity];
@@ -480,6 +531,42 @@ function drawCharts() {
   drawBucketBars();
   if (document.getElementById('curve-chart')) drawCurve();
   if (document.getElementById('matrix-chart')) drawMatrix();
+  if (document.getElementById('trends-chart')) drawTrendsChart();
+}
+
+function drawTrendsChart() {
+  const el = document.getElementById('trends-chart');
+  const quarters = DATA.trendsOverTime;
+  const W = el.clientWidth || 480, H = 260, PAD = { l: 38, r: 100, t: 16, b: 30 };
+  const series = [
+    { key: 'indexHedgeRatioPct', label: 'Index Hedge Ratio', color: 'var(--blue)' },
+    { key: 'top10PctOfFullBook', label: 'Top 10 %', color: 'var(--grn)' },
+    { key: 'top20PctOfFullBook', label: 'Top 20 %', color: 'var(--amb)' },
+  ];
+  const allValues = series.flatMap(s => quarters.map(q => q[s.key] || 0));
+  const maxY = Math.max(...allValues, 10) * 1.15;
+  const x = i => PAD.l + (i / (quarters.length - 1 || 1)) * (W - PAD.l - PAD.r);
+  const y = v => (H - PAD.b) - (v / maxY) * (H - PAD.t - PAD.b);
+
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;display:block' });
+  [0, 25, 50, 75, 100].filter(v => v <= maxY).forEach(v => {
+    svg.appendChild(svgEl('line', { class: 'gridline', x1: PAD.l, x2: W-PAD.r, y1: y(v), y2: y(v) }));
+    const t = svgEl('text', { class: 'axislabel', x: 4, y: y(v)+3 }); t.textContent = v+'%'; svg.appendChild(t);
+  });
+  quarters.forEach((q, i) => {
+    const t = svgEl('text', { class: 'axislabel', x: x(i), y: H-8, 'text-anchor': 'middle' }); t.textContent = q.quarter; svg.appendChild(t);
+  });
+  series.forEach(s => {
+    const pts = quarters.map((q, i) => `${x(i)},${y(q[s.key] || 0)}`).join(' ');
+    svg.appendChild(svgEl('polyline', { points: pts, fill: 'none', stroke: s.color, 'stroke-width': 2 }));
+    quarters.forEach((q, i) => {
+      svg.appendChild(svgEl('circle', { cx: x(i), cy: y(q[s.key] || 0), r: 3.5, fill: s.color }));
+    });
+    const lastVal = quarters[quarters.length-1][s.key] || 0;
+    const legendText = svgEl('text', { class: 'axislabel', x: W-PAD.r+8, y: y(lastVal)+3, fill: s.color });
+    legendText.textContent = s.label; svg.appendChild(legendText);
+  });
+  el.innerHTML = ''; el.appendChild(svg);
 }
 
 function drawBucketBars() {

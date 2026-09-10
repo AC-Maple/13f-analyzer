@@ -40,6 +40,7 @@ from liquidity import (
     compute_liquidation_curve, days_to_reach_pct,
 )
 from resolution_log import derive_quarter_label
+from trends import compute_quarter_snapshot
 
 PARTICIPATION_RATES = [0.05, 0.10, 0.15, 0.20, 0.25]
 POSITION_BASES = ["common", "common_plus_calls"]
@@ -111,6 +112,7 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     quarter_labels = []
     reentered_count = 0
     held_all_count = 0
+    trends_over_time = []
 
     if prior_quarters_rows:
         quarters = [(derive_quarter_label(rows), aggregate_to_economic_positions(rows))
@@ -152,6 +154,19 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
                 "status": last_t["status"], "sharesChangePct": last_t["sharesChangePct"],
                 "oldShares": last_t["oldShares"], "newShares": last_t["newShares"],
             }
+
+        # Trends over time -- reuses trends.py's compute_quarter_snapshot,
+        # itself pure orchestration over already-tested analyze.py
+        # functions (see trends.py's own docstring). Same prior_quarters_rows
+        # already loaded for the chain above, plus the current quarter,
+        # in the same chronological order -- no separate file, no second
+        # script run required. Reuses sector_by_cusip_l3/l4, already built
+        # above for the current quarter's own sector concentration card.
+        trend_quarters_rows = list(prior_quarters_rows) + [classified_rows]
+        trends_over_time = [
+            compute_quarter_snapshot(rows, sector_by_cusip_l3, sector_by_cusip_l4)
+            for rows in trend_quarters_rows
+        ]
 
     full_book_value = sum(p["value"] for p in positions)
 
@@ -250,6 +265,8 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         "chainAvailable": len(quarter_labels) >= 3,   # 2 prior + current, or more -- enough for reenter/held-all to mean something beyond a plain 2-quarter diff
         "reenteredCount": reentered_count,
         "heldAllQuartersCount": held_all_count,
+        "trendsOverTime": trends_over_time,
+        "trendsAvailable": len(trends_over_time) >= 2,
     }
 
 
