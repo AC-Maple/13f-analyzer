@@ -45,6 +45,32 @@ from trends import compute_quarter_snapshot
 PARTICIPATION_RATES = [0.05, 0.10, 0.15, 0.20, 0.25]
 POSITION_BASES = ["common", "common_plus_calls"]
 
+# Calendar-quarter-end month -> fiscal quarter number. Every real filing
+# in this pipeline so far reports on one of these four boundaries (see
+# SKILL.md's Pinnbrook filename-collision note: "most 13F filers report
+# on standard calendar-quarter boundaries").
+_QUARTER_END_MONTH = {"03": "Q1", "06": "Q2", "09": "Q3", "12": "Q4"}
+
+
+def format_quarter_label(period_str):
+    """"2026-03-31" -> "Q1 2026". Found needed by testing a prior
+    quarter as the "current" one for the first time (Pinnbrook Q1 2026
+    treated as data/classified_rows.json, to exercise the Sector &
+    Other ETF Hedges box against real non-zero data) -- the header's
+    quarter label was a literal hardcoded "Q2 2026" string in
+    dashboard_render.py, never actually derived from the period being
+    displayed. It happened to be correct on every real dashboard built
+    before this one, purely because every fund's current quarter
+    tested so far genuinely was Q2 2026 -- coincidence, not a working
+    label. Falls back to the raw string unchanged for anything that
+    doesn't parse as YYYY-MM-DD (e.g. derive_quarter_label's own
+    "unknown_quarter" placeholder for data not sourced via
+    fetch_edgar.py), rather than guessing a quarter number for it."""
+    parts = (period_str or "").split("-")
+    if len(parts) == 3 and parts[1] in _QUARTER_END_MONTH:
+        return f"{_QUARTER_END_MONTH[parts[1]]} {parts[0]}"
+    return period_str
+
 
 def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters_rows=None):
     """prior_quarters_rows: list of raw classified_rows lists, chronological
@@ -292,6 +318,7 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         "heldAllQuartersCount": held_all_count,
         "trendsOverTime": trends_over_time,
         "trendsAvailable": len(trends_over_time) >= 2,
+        "currentQuarterLabel": format_quarter_label(derive_quarter_label(classified_rows)),
     }
 
 

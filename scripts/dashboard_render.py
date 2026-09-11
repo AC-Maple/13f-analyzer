@@ -155,7 +155,7 @@ function render() {
 function renderHeader() {
   return `<header>
     <h1>${esc(DATA.fundName.charAt(0).toUpperCase()+DATA.fundName.slice(1))} Capital \u2014 Liquidity Dashboard</h1>
-    <span class="sub">${DATA.positionCount} economic positions \u00b7 Q2 2026 13F</span>
+    <span class="sub">${DATA.positionCount} economic positions \u00b7 ${esc(DATA.currentQuarterLabel)} 13F</span>
     <span class="tag">SEC QA PASS</span>
   </header>
   <p class="sub">Days to liquidate = position shares \u00f7 (20-day share ADV \u00d7 participation rate), unless noted otherwise \u2014 the 3-month window is always shown alongside it, never in place of it. Single-leg estimate; ignores dark liquidity, blocks, and borrow.</p>`;
