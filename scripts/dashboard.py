@@ -37,7 +37,7 @@ from analyze import (
 )
 from liquidity import (
     load_market_data, compute_liquidity, bucket_summary, discrete_bucket_summary,
-    compute_liquidation_curve, days_to_reach_pct,
+    compute_liquidation_curve, days_to_reach_pct, USABLE_MARKET_DATA_STATUSES,
 )
 from resolution_log import derive_quarter_label
 from trends import compute_quarter_snapshot
@@ -62,7 +62,7 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         shown as an em dash downstream, never guessed or left blank
         silently."""
         m = market_data.get(cusip)
-        if not m or not m.get("PARSEKYABLE_DES") or m.get("PARSEKYABLE_DES_status") != "PASS":
+        if not m or not m.get("PARSEKYABLE_DES") or m.get("PARSEKYABLE_DES_status") not in USABLE_MARKET_DATA_STATUSES:
             return None
         return m["PARSEKYABLE_DES"].split(" ")[0]
 
@@ -86,17 +86,28 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     # real Bloomberg template (Level 3 GICS_INDUSTRY_NAME, Level 4
     # GICS_SUB_INDUSTRY_NAME; there is no Level 2/1 pull in this pipeline,
     # so the toggle is Industry/Sub-Industry, not Sector/Industry-Group).
-    # Only PASS-status values count as classified -- PENDING_EXTERNAL_DATA,
+    # PASS or PASS_HUMAN_CORRECTED counts as classified -- PENDING_EXTERNAL_DATA,
     # REVIEW, or a missing CUSIP entirely all fall through the same way,
     # into compute_sector_concentration's own explicit "Unclassified"
     # bucket, matching analyze.py's own CLI reporting block exactly.
+    # Found excluding PASS_HUMAN_CORRECTED on Melqart's real data: Chart
+    # Industries' human-corrected GICS_INDUSTRY_NAME ("Machinery") never
+    # reached the sector card at all -- Unclassified's count/percentage
+    # were bit-for-bit unchanged before and after the correction was
+    # applied and confirmed present in market_data.json, and a coincidental
+    # real "Entertainment" match (Warner Bros Discovery's own live PASS
+    # data, not EA's correction) made the gap easy to miss on a first
+    # look. The exact same PASS-only-excludes-corrections bug already
+    # fixed in liquidity.py (USABLE_MARKET_DATA_STATUSES) was never
+    # applied here -- reusing that same constant rather than a second,
+    # independently-maintained status tuple.
     sector_by_cusip_l3 = {
         cusip: m["GICS_INDUSTRY_NAME"] for cusip, m in market_data.items()
-        if m.get("GICS_INDUSTRY_NAME_status") == "PASS"
+        if m.get("GICS_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
     }
     sector_by_cusip_l4 = {
         cusip: m["GICS_SUB_INDUSTRY_NAME"] for cusip, m in market_data.items()
-        if m.get("GICS_SUB_INDUSTRY_NAME_status") == "PASS"
+        if m.get("GICS_SUB_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
     }
     sector_concentration = {
         "industry": compute_sector_concentration(exposures, sector_by_cusip_l3),

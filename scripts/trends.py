@@ -59,7 +59,7 @@ from analyze import (
     aggregate_to_economic_positions, compute_true_long_exposure,
     compute_concentration, compute_index_hedge_ratio, compute_sector_concentration,
 )
-from liquidity import load_market_data
+from liquidity import load_market_data, USABLE_MARKET_DATA_STATUSES
 from resolution_log import derive_quarter_label
 
 
@@ -98,19 +98,25 @@ def build_sector_maps(market_data):
     """Identical dict-comprehension pattern already used in
     dashboard.py's build_dashboard_data -- duplicated here rather than
     imported because it's data reshaping to match compute_sector_
-    concentration's input contract, not calculation logic. Only
-    PASS-status GICS values count as classified; PENDING_EXTERNAL_DATA,
+    concentration's input contract, not calculation logic. PASS or
+    PASS_HUMAN_CORRECTED counts as classified (see
+    liquidity.USABLE_MARKET_DATA_STATUSES); PENDING_EXTERNAL_DATA,
     REVIEW, or a CUSIP missing from market_data.json entirely all fall
     through into compute_sector_concentration's own "Unclassified"
     bucket, matching every other consumer of this data in this
-    pipeline."""
+    pipeline. A strict PASS-only version of this exact check shipped
+    in dashboard.py first and was found excluding human-corrected GICS
+    values entirely on Melqart's real data (Chart Industries'
+    corrected "Machinery" classification never reached the sector
+    card) -- fixed there and mirrored here so this file's standalone
+    CLI path doesn't carry the same gap forward."""
     sector_by_cusip_l3 = {
         cusip: m["GICS_INDUSTRY_NAME"] for cusip, m in market_data.items()
-        if m.get("GICS_INDUSTRY_NAME_status") == "PASS"
+        if m.get("GICS_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
     }
     sector_by_cusip_l4 = {
         cusip: m["GICS_SUB_INDUSTRY_NAME"] for cusip, m in market_data.items()
-        if m.get("GICS_SUB_INDUSTRY_NAME_status") == "PASS"
+        if m.get("GICS_SUB_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
     }
     return sector_by_cusip_l3, sector_by_cusip_l4
 

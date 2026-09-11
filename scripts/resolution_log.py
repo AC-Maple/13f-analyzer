@@ -150,7 +150,8 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage:")
         print("  python resolution_log.py list")
-        print("  python resolution_log.py resolve <exception_id> <APPROVE|CORRECT|ESCALATE> <reviewer> [note]")
+        print("  python resolution_log.py resolve <exception_id> <APPROVE|ESCALATE> <reviewer> [note]")
+        print("  python resolution_log.py resolve <exception_id> CORRECT <reviewer> <correction_value> [note]")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -169,13 +170,36 @@ if __name__ == "__main__":
 
     elif command == "resolve":
         if len(sys.argv) < 5:
-            print("Usage: python resolution_log.py resolve <exception_id> <DECISION> <reviewer> [note]")
+            print("Usage: python resolution_log.py resolve <exception_id> <APPROVE|ESCALATE> <reviewer> [note]")
+            print("       python resolution_log.py resolve <exception_id> CORRECT <reviewer> <correction_value> [note]")
             sys.exit(1)
         exception_id = sys.argv[2]
         decision = sys.argv[3]
         reviewer = sys.argv[4]
-        note = sys.argv[5] if len(sys.argv) > 5 else None
-        record = record_resolution(exception_id, decision, reviewer, note=note)
+        # CORRECT requires a distinct correction_value positional arg,
+        # separate from note -- found broken (never actually wired,
+        # not a regression: unchanged since the initial commit) while
+        # running the real CLI end to end on Melqart's real Chart
+        # Industries/EA corrections: record_resolution() and every
+        # downstream consumer (import_bloomberg_data.py's CORRECT-
+        # application logic) already read a distinct `correction`
+        # field, but this CLI only ever parsed 4 positional args and
+        # silently dropped the correction value into `note`, leaving
+        # `correction` permanently None for every CLI-driven CORRECT
+        # resolution regardless of what was actually typed. APPROVE and
+        # ESCALATE don't need a correction value, so they keep the
+        # simpler [note]-only form.
+        if decision.upper() == "CORRECT":
+            if len(sys.argv) < 6:
+                print("CORRECT requires a correction value: "
+                      "python resolution_log.py resolve <exception_id> CORRECT <reviewer> <correction_value> [note]")
+                sys.exit(1)
+            correction = sys.argv[5]
+            note = sys.argv[6] if len(sys.argv) > 6 else None
+        else:
+            correction = None
+            note = sys.argv[5] if len(sys.argv) > 5 else None
+        record = record_resolution(exception_id, decision, reviewer, note=note, correction=correction)
         print(f"Recorded: {record}")
 
     else:

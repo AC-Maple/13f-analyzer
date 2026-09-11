@@ -59,6 +59,19 @@ FIELD_COLUMNS = {
     "VOLUME_AVG_20D": (7, "numeric"),
     "VOLUME_AVG_3M": (8, "numeric"),
     "PARSEKYABLE_DES": (9, "string"),
+    # Restored 2026-09-11 -- these two entries and the ws.cell()-based
+    # row loop below (see the note there) were both silently dropped
+    # when this file was rewritten for the liquidity_override feature,
+    # reverting two already-shipped, already-verified fixes without
+    # anyone deciding to. Found by testing against Melqart's real
+    # refreshed workbook: it has real, populated GICS data for all 40
+    # positions (confirmed by reading the raw cell values directly),
+    # but zero of the 40 resulting market_data.json records carried a
+    # GICS_INDUSTRY_NAME key at all until this was restored. GICS
+    # mnemonics live-confirmed 2026-09-08 -- see SKILL.md's "Sector
+    # classification field verification (GICS, live-tested)" section.
+    "GICS_INDUSTRY_NAME": (10, "string"),
+    "GICS_SUB_INDUSTRY_NAME": (11, "string"),
 }
 HEADER_ROW = 4
 
@@ -122,16 +135,30 @@ wb = load_workbook(INPUT_FILE, data_only=True)
 ws = wb.active
 
 results = []
-for row in ws.iter_rows(min_row=HEADER_ROW + 1, values_only=False):
-    issuer_cell, cusip_cell = row[0], row[1]
-    if cusip_cell.value in (None, ""):
+for row_num in range(HEADER_ROW + 1, ws.max_row + 1):
+    # Restored 2026-09-11 -- addressed by (row, column) via ws.cell(),
+    # not by indexing into the row tuple from iter_rows(). That tuple
+    # is only as wide as openpyxl thinks the sheet's used range is,
+    # which can be narrower than max(FIELD_COLUMNS) on a workbook
+    # exported before a newer column existed (e.g. a pre-GICS
+    # bloomberg_template.xlsx re-run through a newer FIELD_COLUMNS).
+    # ws.cell() on a column past the sheet's populated range just
+    # returns an empty cell (value=None), which classify_cell already
+    # treats as PENDING_EXTERNAL_DATA -- exactly the right outcome for
+    # "this workbook predates this field," not a crash. This exact fix
+    # was already shipped once (Pinnbrook session) and was silently
+    # reverted when this file was rewritten for liquidity_override;
+    # restoring it here rather than leaving the fragile version in
+    # place now that the regression was found.
+    cusip_val = ws.cell(row=row_num, column=2).value
+    if cusip_val in (None, ""):
         continue
-    cusip = str(cusip_cell.value).strip()
-    issuer = issuer_cell.value
+    cusip = str(cusip_val).strip()
+    issuer = ws.cell(row=row_num, column=1).value
 
     record = {"cusip": cusip, "issuer": issuer}
     for field, (col_idx, expected_type) in FIELD_COLUMNS.items():
-        cell = row[col_idx - 1]
+        cell = ws.cell(row=row_num, column=col_idx)
         clean_value, status = classify_cell(cell.value, expected_type)
         record[field] = clean_value
         record[f"{field}_status"] = status
