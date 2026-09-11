@@ -1,0 +1,4 @@
+{
+  "name": "13F Analyzer",
+  "install": "pip install --user -r requirements.txt && mkdir -p scripts/data"
+}

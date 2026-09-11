@@ -1,0 +1,8 @@
+# Runtime dependencies for the 13F analysis pipeline (scripts/).
+# Pinned to versions validated in this repo. edgartools is pinned to
+# 5.55.0 because fetch_edgar.py's column mapping is verified against that
+# release's XML infotable parser (see scripts/fetch_edgar.py docstring).
+edgartools==5.55.0
+pandas==3.0.5
+yfinance==1.7.0
+openpyxl==3.1.5
