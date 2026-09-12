@@ -26,21 +26,26 @@ Writes: <output_file.html> if given; otherwise defaults to
         and different quarters of the same fund never silently collide.
 """
 import json
+import re
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 from analyze import (
     aggregate_to_economic_positions, compute_true_long_exposure,
     compute_concentration, compute_index_hedge_ratio, flag_related_security_families,
     compute_position_status, chain_position_status, compute_sector_concentration,
-    get_hedge_position_detail,
+    get_hedge_position_detail, compute_gics_l3_rotation,
+    LONG_CLASSES, CALL_CLASSES, PUT_CLASSES,
 )
 from liquidity import (
     load_market_data, compute_liquidity, bucket_summary, discrete_bucket_summary,
     compute_liquidation_curve, days_to_reach_pct, USABLE_MARKET_DATA_STATUSES,
+    ADV_ELIGIBLE_CLASSES,
 )
-from resolution_log import derive_quarter_label
+from resolution_log import derive_quarter_label, load_all_resolutions
 from trends import compute_quarter_snapshot
+from integrity import summarize_integrity_status
 
 PARTICIPATION_RATES = [0.05, 0.10, 0.15, 0.20, 0.25]
 POSITION_BASES = ["common", "common_plus_calls"]
@@ -72,6 +77,332 @@ def format_quarter_label(period_str):
     return period_str
 
 
+def _normalize_issuer(name):
+    n = (name or "").upper().strip()
+    n = re.sub(r"[.,]", "", n)
+    n = re.sub(r"\s+", " ", n)
+    return n
+
+
+def user_facing_exclusion_reason(reason):
+    """Map liquidity.py internal exclusion reasons to analyst-facing copy.
+
+    Does not change who is excluded or any ADV math. The liquidity module
+    keeps its own CLI wording (including the module-docstring pointer);
+    the dashboard never surfaces that internal note."""
+    text = reason or ""
+    if "option or warrant" in text or text.startswith("not ADV-modeled"):
+        return "Excluded from ADV liquidity model"
+    if "no market data" in text:
+        return "No Bloomberg market data for this CUSIP"
+    if "PX_LAST" in text:
+        return "PX_LAST not verified"
+    return text or "Excluded from ADV liquidity model"
+
+
+def _registry_paths():
+    return (
+        Path("references/manager_registry.json"),
+        Path("../references/manager_registry.json"),
+        Path(__file__).resolve().parent.parent / "references" / "manager_registry.json",
+    )
+
+
+def resolve_manager_display_name(fund_name):
+    """Legal/display name from the hand-verified registry. Never appends
+    a hardcoded 'Capital' suffix -- that was wrong for Melqart and
+    Pinnbrook."""
+    registry = {}
+    for path in _registry_paths():
+        if path.exists():
+            with open(path) as f:
+                registry = json.load(f)
+            break
+    key = (fund_name or "").lower().strip()
+    if key in registry:
+        return registry[key]["full_name"]
+    for k, v in registry.items():
+        if key and (key in k or k.startswith(key)):
+            return v["full_name"]
+    return fund_name
+
+
+def gics_map_from_market_data(market_data, field="GICS_INDUSTRY_NAME"):
+    return {
+        cusip: m[field]
+        for cusip, m in market_data.items()
+        if m.get(f"{field}_status") in USABLE_MARKET_DATA_STATUSES and m.get(field)
+    }
+
+
+def gics_for_cusip(cusip, market_data):
+    m = market_data.get(cusip) or {}
+    industry = (
+        m.get("GICS_INDUSTRY_NAME")
+        if m.get("GICS_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
+        else None
+    )
+    sub = (
+        m.get("GICS_SUB_INDUSTRY_NAME")
+        if m.get("GICS_SUB_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
+        else None
+    )
+    return industry, sub
+
+
+def quarter_market_data_path(rows):
+    if not rows:
+        return None
+    cik = rows[0].get("_source_cik")
+    period = derive_quarter_label(rows)
+    if cik in (None, "") or not period or period == "unknown_quarter":
+        return None
+    return Path(f"data/market_data_{cik}_{period}.json")
+
+
+def persist_quarter_market_data(rows, market_data):
+    """Write THIS quarter's own market-data pull. Used later as that
+    quarter's classification snapshot -- never as a substitute for a
+    different quarter's missing GICS."""
+    path = quarter_market_data_path(rows)
+    if path is None:
+        return
+    records = list(market_data.values()) if isinstance(market_data, dict) else market_data
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+
+
+def load_quarter_specific_market_data(rows):
+    """Load GICS/market data that belongs to this quarter's own snapshot.
+    Returns {} if no snapshot exists -- does NOT fall back to the live
+    current-quarter market_data.json."""
+    path = quarter_market_data_path(rows)
+    if path is None or not path.exists():
+        return {}
+    return load_market_data(str(path))
+
+
+def build_qoq_buckets(statuses, common_book_total):
+    by_status = defaultdict(list)
+    for s in statuses:
+        by_status[s["status"]].append(s)
+    buckets = []
+    for status in ("NEW", "INCREASED", "DECREASED", "CLOSED", "UNCHANGED"):
+        items = by_status.get(status, [])
+        dollar_change = sum((s["newValue"] - s["oldValue"]) for s in items)
+        top = sorted(items, key=lambda s: -abs(s["newValue"] - s["oldValue"]))[:5]
+        buckets.append({
+            "status": status,
+            "count": len(items),
+            "dollarChange": dollar_change,
+            "pctOfCommonBook": (
+                round(dollar_change / common_book_total * 100, 2)
+                if common_book_total else None
+            ),
+            "topNames": [
+                {
+                    "cusip": s["cusip"],
+                    "instrumentClass": s["instrumentClass"],
+                    "issuer": s["issuer"],
+                    "oldValue": s["oldValue"],
+                    "newValue": s["newValue"],
+                    "dollarChange": s["newValue"] - s["oldValue"],
+                    "sharesChangePct": s["sharesChangePct"],
+                }
+                for s in top
+            ],
+        })
+    return buckets
+
+
+def build_companies(positions, exposures, common_book_total, market_data, ticker_from_market_data):
+    exp_by_cusip = {e["cusip"]: e for e in exposures}
+    groups = defaultdict(list)
+    for p in positions:
+        groups[_normalize_issuer(p["nameOfIssuer"])].append(p)
+
+    companies = []
+    for key, members in groups.items():
+        instruments = []
+        for p in members:
+            industry, sub = gics_for_cusip(p["cusip"], market_data)
+            adv_modeled = p["instrumentClass"] in ADV_ELIGIBLE_CLASSES
+            e = exp_by_cusip.get(p["cusip"])
+            # Long-class legs share the CUSIP common-book weight
+            # (commonValue / sum(commonValue)). Calls/puts are overlay,
+            # not a second weight.
+            pct = e.get("pctOfCommonBook") if e and p["instrumentClass"] in LONG_CLASSES else None
+            instruments.append({
+                "cusip": p["cusip"],
+                "instrumentClass": p["instrumentClass"],
+                "filedValue": p["value"],
+                "shares": p["shares"],
+                "ticker": ticker_from_market_data(p["cusip"]),
+                "gicsIndustry": industry,
+                "gicsSubIndustry": sub,
+                "advModeled": adv_modeled,
+                "pctOfCommonBook": pct,
+                "excludedFromAdvModel": not adv_modeled,
+                "isCall": p["instrumentClass"] in CALL_CLASSES,
+                "isPut": p["instrumentClass"] in PUT_CLASSES,
+            })
+        cusips = {p["cusip"] for p in members}
+        rolled = [exp_by_cusip[c] for c in cusips if c in exp_by_cusip]
+        common_value = sum(e["commonValue"] for e in rolled)
+        call_value = sum(e["callValue"] for e in rolled)
+        put_value = sum(e["putValue"] for e in rolled)
+        true_long = sum(e["trueLongExposure"] for e in rolled)
+        pct_common = (
+            round(common_value / common_book_total * 100, 3)
+            if common_book_total and common_value else None
+        )
+        companies.append({
+            "issuerKey": key,
+            "issuer": members[0]["nameOfIssuer"],
+            "instrumentCount": len(members),
+            "cusips": sorted(cusips),
+            "instruments": instruments,
+            "commonValue": common_value,
+            "callValue": call_value,
+            "putValue": put_value,
+            "trueLongExposure": true_long,
+            "pctOfCommonBook": pct_common,
+            "isCallOnly": common_value == 0 and call_value > 0,
+            "optionToCommonRatioPct": (
+                rolled[0]["optionToCommonRatioPct"] if len(rolled) == 1 else (
+                    round(call_value / common_value * 100, 1) if common_value else None
+                )
+            ),
+            "gicsIndustry": next((e.get("gicsIndustry") for e in rolled if e.get("gicsIndustry")), None),
+        })
+    companies.sort(key=lambda c: -(c["commonValue"] or 0) - (c["callValue"] or 0))
+    return companies
+
+
+def build_attention_inbox(liquidity, excluded, exposures, qoq_statuses, unclassified_true_long,
+                          unclassified_count, integrity, common_book_total, fund_name, quarter):
+    """Fixed categories, no composite score. Each item states the rule
+    and the number that fired it."""
+    regulatory = []
+    for r in liquidity:
+        flag = r.get("thresholdProximityFlag")
+        if not flag:
+            continue
+        if flag == "WARRANT_BLOCKER_RANGE":
+            rule = "Warrant-blocker proximity (4.5–5.0% of shares outstanding)"
+        elif flag == "SECTION_16_PROXIMITY_RANGE":
+            rule = "Section 16 proximity (9.0–9.99% of shares outstanding)"
+        else:
+            rule = flag
+        regulatory.append({
+            "cusip": r["cusip"],
+            "instrumentClass": r["instrumentClass"],
+            "issuer": r["issuer"],
+            "ticker": r.get("ticker"),
+            "rule": rule,
+            "numberLabel": "% shares outstanding",
+            "numberValue": r.get("pctSharesOutstanding"),
+            "dollars": r.get("verifiedValue"),
+        })
+    regulatory.sort(key=lambda x: -(x["dollars"] or 0))
+
+    concentrated = []
+    for r in liquidity:
+        if not r.get("concentratedAndIlliquid"):
+            continue
+        concentrated.append({
+            "cusip": r["cusip"],
+            "instrumentClass": r["instrumentClass"],
+            "issuer": r["issuer"],
+            "ticker": r.get("ticker"),
+            "rule": "Concentrated and compounding-illiquid",
+            "numberLabel": "days to liquidate (20d) · % SO",
+            "numberValue": r.get("daysToLiquidate_20d"),
+            "numberValueSecondary": r.get("pctSharesOutstanding"),
+            "dollars": r.get("verifiedValue"),
+        })
+    concentrated.sort(key=lambda x: -(x["dollars"] or 0))
+
+    coverage = []
+    for e in excluded:
+        coverage.append({
+            "cusip": e["cusip"],
+            "instrumentClass": e.get("instrumentClass"),
+            "issuer": e["issuer"],
+            "ticker": e.get("ticker"),
+            "rule": user_facing_exclusion_reason(e.get("reason")),
+            "numberLabel": "instrument",
+            "numberValue": e.get("instrumentClass"),
+            "dollars": e.get("filedValue"),
+        })
+    if unclassified_true_long:
+        coverage.append({
+            "cusip": None,
+            "instrumentClass": None,
+            "issuer": "Unclassified GICS (current quarter)",
+            "ticker": None,
+            "rule": "Current-quarter true-long has no usable GICS L3",
+            "numberLabel": "unclassified names",
+            "numberValue": unclassified_count,
+            "dollars": unclassified_true_long,
+        })
+    if integrity and integrity.get("openReviewCount"):
+        coverage.append({
+            "cusip": None,
+            "instrumentClass": None,
+            "issuer": "Integrity open reviews",
+            "ticker": None,
+            "rule": "Unresolved pipeline review / correction items",
+            "numberLabel": "open items",
+            "numberValue": integrity["openReviewCount"],
+            "dollars": None,
+        })
+    resolutions = load_all_resolutions()
+    open_for_fund = [
+        rec for rec in resolutions.values()
+        if rec.get("exception_id", "").startswith(f"{fund_name}:{quarter}:")
+        and rec.get("decision") == "ESCALATE"
+    ]
+    for rec in open_for_fund:
+        coverage.append({
+            "cusip": None,
+            "instrumentClass": None,
+            "issuer": rec["exception_id"],
+            "ticker": None,
+            "rule": f"ESCALATE -- {rec.get('note') or 'unresolved correction'}",
+            "numberLabel": "decision",
+            "numberValue": rec.get("decision"),
+            "dollars": None,
+        })
+    coverage.sort(key=lambda x: -(x["dollars"] or 0))
+
+    moves = []
+    for s in qoq_statuses:
+        delta = s["newValue"] - s["oldValue"]
+        if delta == 0:
+            continue
+        moves.append({
+            "cusip": s["cusip"],
+            "instrumentClass": s["instrumentClass"],
+            "issuer": s["issuer"],
+            "ticker": None,
+            "rule": f"{s['status']} — filed-value change",
+            "numberLabel": "Δ filed value",
+            "numberValue": delta,
+            "dollars": abs(delta),
+            "status": s["status"],
+        })
+    moves.sort(key=lambda x: -x["dollars"])
+    moves = moves[:15]
+
+    return [
+        {"id": "regulatory", "label": "Regulatory / threshold proximity", "items": regulatory},
+        {"id": "concentratedIlliquid", "label": "Concentrated and illiquid", "items": concentrated},
+        {"id": "coverage", "label": "Coverage gaps / unresolved corrections", "items": coverage},
+        {"id": "dollarMoves", "label": "Largest dollar moves", "items": moves},
+    ]
+
+
 def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters_rows=None):
     """prior_quarters_rows: list of raw classified_rows lists, chronological
     (oldest first), NOT including the current quarter -- 0, 1, or several.
@@ -92,15 +423,35 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
             return None
         return m["PARSEKYABLE_DES"].split(" ")[0]
 
+    persist_quarter_market_data(classified_rows, market_data)
+
     positions = aggregate_to_economic_positions(classified_rows)
+    filed_value_by_sid = {(p["cusip"], p["instrumentClass"]): p["value"] for p in positions}
 
     exposures = compute_true_long_exposure(positions)
+    common_book_total = sum(e["commonValue"] for e in exposures)
+    for e in exposures:
+        industry, sub = gics_for_cusip(e["cusip"], market_data)
+        e["gicsIndustry"] = industry
+        e["gicsSubIndustry"] = sub
+        e["ticker"] = ticker_from_market_data(e["cusip"])
+        e["isCallOnly"] = e["commonValue"] == 0 and e["callValue"] > 0
+        e["issuerKey"] = _normalize_issuer(e.get("issuer"))
+        e["pctOfCommonBook"] = (
+            round(e["commonValue"] / common_book_total * 100, 3)
+            if common_book_total and e["commonValue"] else None
+        )
     concentration = compute_concentration(exposures)
     hedge = compute_index_hedge_ratio(positions)
     hedge_detail = get_hedge_position_detail(positions)
     for p in hedge_detail["indexHedgePositions"] + hedge_detail["sectorHedgePositions"]:
         p["ticker"] = ticker_from_market_data(p["cusip"])
+        industry, sub = gics_for_cusip(p["cusip"], market_data)
+        p["gicsIndustry"] = industry
+        p["gicsSubIndustry"] = sub
     families = flag_related_security_families(positions)
+    pct_common_by_cusip = {e["cusip"]: e["pctOfCommonBook"] for e in exposures}
+    common_value_by_cusip = {e["cusip"]: e["commonValue"] for e in exposures}
 
     # Top 10 by % of full book -- distinct from "top liquidity risks"
     # (sorted by days-to-liquidate). Reuses compute_concentration's
@@ -127,14 +478,8 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     # fixed in liquidity.py (USABLE_MARKET_DATA_STATUSES) was never
     # applied here -- reusing that same constant rather than a second,
     # independently-maintained status tuple.
-    sector_by_cusip_l3 = {
-        cusip: m["GICS_INDUSTRY_NAME"] for cusip, m in market_data.items()
-        if m.get("GICS_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
-    }
-    sector_by_cusip_l4 = {
-        cusip: m["GICS_SUB_INDUSTRY_NAME"] for cusip, m in market_data.items()
-        if m.get("GICS_SUB_INDUSTRY_NAME_status") in USABLE_MARKET_DATA_STATUSES
-    }
+    sector_by_cusip_l3 = gics_map_from_market_data(market_data, "GICS_INDUSTRY_NAME")
+    sector_by_cusip_l4 = gics_map_from_market_data(market_data, "GICS_SUB_INDUSTRY_NAME")
     sector_concentration = {
         "industry": compute_sector_concentration(exposures, sector_by_cusip_l3),
         "subIndustry": compute_sector_concentration(exposures, sector_by_cusip_l4),
@@ -150,6 +495,11 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     reentered_count = 0
     held_all_count = 0
     trends_over_time = []
+    last_pairwise_statuses = []
+    closed_positions = []
+    qoq_buckets = []
+    changes_blotter = []
+    gics_rotation = None
 
     if prior_quarters_rows:
         quarters = [(derive_quarter_label(rows), aggregate_to_economic_positions(rows))
@@ -212,11 +562,59 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         # in the same chronological order -- no separate file, no second
         # script run required. Reuses sector_by_cusip_l3/l4, already built
         # above for the current quarter's own sector concentration card.
+        last_pairwise_statuses = compute_position_status(quarters[-2][1], quarters[-1][1])
+        qoq_buckets = build_qoq_buckets(last_pairwise_statuses, common_book_total)
+
+        immediate_prior_rows = prior_quarters_rows[-1]
+        prior_snapshot = load_quarter_specific_market_data(immediate_prior_rows)
+        prior_gics_l3 = gics_map_from_market_data(prior_snapshot, "GICS_INDUSTRY_NAME")
+        current_gics_l3 = gics_map_from_market_data(market_data, "GICS_INDUSTRY_NAME")
+        prior_exposures = compute_true_long_exposure(quarters[-2][1])
+        gics_rotation = compute_gics_l3_rotation(
+            prior_exposures, exposures, prior_gics_l3, current_gics_l3
+        )
+
+        changes_blotter = []
+        for s in last_pairwise_statuses:
+            if s["status"] == "CLOSED":
+                industry = prior_gics_l3.get(s["cusip"])
+            else:
+                industry = current_gics_l3.get(s["cusip"])
+            row = {
+                "cusip": s["cusip"],
+                "instrumentClass": s["instrumentClass"],
+                "issuer": s["issuer"],
+                "ticker": ticker_from_market_data(s["cusip"]),
+                "status": s["status"],
+                "priorExposure": s["oldValue"],
+                "currentExposure": s["newValue"],
+                "dollarChange": s["newValue"] - s["oldValue"],
+                "oldShares": s["oldShares"],
+                "newShares": s["newShares"],
+                "sharesChangePct": s["sharesChangePct"],
+                "gicsIndustry": industry,
+            }
+            changes_blotter.append(row)
+            if s["status"] == "CLOSED":
+                closed_positions.append({
+                    **row,
+                    "currentExposure": 0,
+                })
+
+        # Trends still uses each quarter's snapshot when one exists;
+        # compute_quarter_snapshot itself is unchanged. Current-quarter
+        # GICS is NOT copied onto prior quarters here.
         trend_quarters_rows = list(prior_quarters_rows) + [classified_rows]
-        trends_over_time = [
-            compute_quarter_snapshot(rows, sector_by_cusip_l3, sector_by_cusip_l4)
-            for rows in trend_quarters_rows
-        ]
+        trends_over_time = []
+        for rows in trend_quarters_rows:
+            snap = load_quarter_specific_market_data(rows)
+            if snap:
+                l3, l4 = gics_map_from_market_data(snap, "GICS_INDUSTRY_NAME"), gics_map_from_market_data(snap, "GICS_SUB_INDUSTRY_NAME")
+            elif rows is classified_rows:
+                l3, l4 = sector_by_cusip_l3, sector_by_cusip_l4
+            else:
+                l3, l4 = {}, {}
+            trends_over_time.append(compute_quarter_snapshot(rows, l3, l4))
 
     full_book_value = sum(p["value"] for p in positions)
 
@@ -246,19 +644,23 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
                 r["reenteredAfterClose"] = c["reenteredAfterClose"] if c else False
                 r["heldAllQuarters"] = c["heldAllQuarters"] if c else None
                 r["netSharesChangePct"] = c["netSharesChangePct"] if c else None
-                # % of fund size -- same denominator as every other "% of
-                # book" figure on this dashboard (concentration.fullBookTotal,
-                # hedges excluded), not the raw SEC-reported total. Computed
-                # against THIS row's own verifiedValue (common-only, exactly
-                # what's displayed) rather than reusing exposures' netted
-                # trueLongExposure -- a position with a call overlay would
-                # otherwise show a % that doesn't match value/total using
-                # the number actually printed in the same row.
-                r["pctOfBook"] = (
-                    round(r["verifiedValue"] / concentration["fullBookTotal"] * 100, 3)
-                    if concentration["fullBookTotal"] else None
-                )
+                # Filed common-book weight -- NOT verifiedValue / true-long.
+                # Numerator and denominator are filed commonValue, same as-of.
+                r["pctOfCommonBook"] = pct_common_by_cusip.get(r["cusip"])
+                r["filedCommonValue"] = common_value_by_cusip.get(r["cusip"])
+                r["filedValue"] = filed_value_by_sid.get(security_id)
+                industry, sub = gics_for_cusip(r["cusip"], market_data)
+                r["gicsIndustry"] = industry
+                r["gicsSubIndustry"] = sub
                 r["ticker"] = ticker_from_market_data(r["cusip"])
+            for e in excluded:
+                e["filedValue"] = filed_value_by_sid.get((e["cusip"], e["instrumentClass"]))
+                e["ticker"] = ticker_from_market_data(e["cusip"])
+                industry, sub = gics_for_cusip(e["cusip"], market_data)
+                e["gicsIndustry"] = industry
+                e["gicsSubIndustry"] = sub
+                e["excludedFromAdvModel"] = True
+                e["reason"] = user_facing_exclusion_reason(e.get("reason"))
             curve_20d = compute_liquidation_curve(liquidity_records, positions, window="20d")
             curve_3m = compute_liquidation_curve(liquidity_records, positions, window="3m")
             by_rate[str(rate)] = {
@@ -277,26 +679,42 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     default_basis = POSITION_BASES[0]
     default_rate = str(PARTICIPATION_RATES[2])
     default_liquidity = by_basis[default_basis][default_rate]["liquidity"]
+    default_excluded = by_basis[default_basis][default_rate]["excluded"]
     compounding_flags = sorted(
         [r for r in default_liquidity if r["compoundingIlliquidity"]],
         key=lambda r: -(r["daysToLiquidate_20d"] or 0),
     )
     threshold_flags = [r for r in default_liquidity if r["thresholdProximityFlag"]]
 
-    # reentered_count / held_all_count already computed above, directly
-    # from the full per-Security-ID chain -- see the note there. Only
-    # meaningful with 2+ total quarters (a single prior quarter can show
-    # NEW/CLOSED/INCREASED/DECREASED, but reenteredAfterClose and
-    # heldAllQuarters both need a real chain to mean anything -- with
-    # only 2 quarters "held all quarters" is the same as "not new and
-    # not closed"); both default to 0 above when prior_quarters_rows is
-    # empty, matching that case correctly.
+    sc_industry = sector_concentration["industry"]
+    unclassified_row = next((s for s in sc_industry["ranked"] if s["sector"] == "Unclassified"), None)
+    unclassified_true_long = unclassified_row["trueLongExposure"] if unclassified_row else 0
+    unclassified_count = unclassified_row["positionCount"] if unclassified_row else 0
+
+    filing_period = derive_quarter_label(classified_rows)
+    manager_display_name = resolve_manager_display_name(fund_name)
+    integrity = summarize_integrity_status(classified_rows, fund_name, market_data)
+    companies = build_companies(
+        positions, exposures, common_book_total, market_data, ticker_from_market_data
+    )
+    attention_inbox = build_attention_inbox(
+        default_liquidity, default_excluded, exposures, last_pairwise_statuses,
+        unclassified_true_long, unclassified_count, integrity,
+        common_book_total, fund_name, filing_period,
+    )
+    call_notional_total = sum(e["callValue"] for e in exposures)
+    put_notional_total = sum(e["putValue"] for e in exposures)
 
     return {
         "fundName": fund_name,
+        "managerDisplayName": manager_display_name,
         "fullBookValue": full_book_value,
+        "commonBookTotal": common_book_total,
+        "callNotionalTotal": call_notional_total,
+        "putNotionalTotal": put_notional_total,
         "positionCount": len(positions),
         "exposures": sorted(exposures, key=lambda e: -e["trueLongExposure"]),
+        "companies": companies,
         "concentration": concentration,
         "top10ByBook": top10_by_book,
         "sectorConcentration": sector_concentration,
@@ -308,17 +726,30 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         "defaultRate": default_rate,
         "compoundingFlags": compounding_flags,
         "thresholdFlags": threshold_flags,
+        "attentionInbox": attention_inbox,
+        "closedPositions": closed_positions,
+        "changesBlotter": changes_blotter,
+        "qoqBuckets": qoq_buckets,
+        "gicsRotation": gics_rotation,
+        "integrity": integrity,
+        "asOf": {
+            "filedPeriod": filing_period,
+            "filedPeriodLabel": format_quarter_label(filing_period),
+            "filingDate": classified_rows[0].get("_source_filing_date") if classified_rows else None,
+            "filedValueLabel": "Filed value — quarter-end",
+            "verifiedValueLabel": "Verified market value — Bloomberg PX_LAST",
+        },
         "participationRates": PARTICIPATION_RATES,
         "positionBases": POSITION_BASES,
         "qoqAvailable": bool(prior_quarters_rows),
         "quarterCount": len(quarter_labels) if quarter_labels else (1 if prior_quarters_rows is not None else 0),
         "quarterLabels": quarter_labels,
-        "chainAvailable": len(quarter_labels) >= 3,   # 2 prior + current, or more -- enough for reenter/held-all to mean something beyond a plain 2-quarter diff
+        "chainAvailable": len(quarter_labels) >= 3,
         "reenteredCount": reentered_count,
         "heldAllQuartersCount": held_all_count,
         "trendsOverTime": trends_over_time,
         "trendsAvailable": len(trends_over_time) >= 2,
-        "currentQuarterLabel": format_quarter_label(derive_quarter_label(classified_rows)),
+        "currentQuarterLabel": format_quarter_label(filing_period),
     }
 
 
@@ -327,7 +758,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>__FUND_NAME__ — 13F Liquidity &amp; Exposure</title>
+<title>__FUND_NAME__ — 13F Overview</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>

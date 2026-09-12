@@ -405,6 +405,83 @@ def check_7_missing_fields(rows):
     return missing
 
 
+def summarize_integrity_status(rows, fund_name, market_data=None):
+    """Same hard-fail rule as this module's CLI (__main__), returned as
+    a payload the dashboard can display. Does not invent a PASS that
+    the checks did not produce. Check 1 remains PENDING_EXTERNAL_DATA
+    unless a third-party total is supplied -- so a clean filing still
+    reports PASS WITH REVIEW/PENDING ITEMS, never a hardcoded
+    'SEC QA PASS'."""
+    quarter = derive_quarter_label(rows)
+
+    c1 = check_1_total_reconciliation(rows)
+    c2 = apply_resolution_log(
+        check_2_implied_price_sanity(rows), fund_name, quarter, "check2",
+        id_fn=lambda item: f"row{item['row']}",
+        review_statuses={"REVIEW_VALUE_SCALING", "REVIEW_SHARE_COUNT"},
+    )
+    c2b = check_2b_filing_wide_value_scaling(rows)
+    c2c = apply_resolution_log(
+        check_2c_convertible_bond_price_sanity(rows), fund_name, quarter, "check2c",
+        id_fn=lambda item: f"row{item['row']}",
+        review_statuses={"REVIEW_VALUE_SCALING", "REVIEW_SHARE_COUNT"},
+    )
+    c3 = check_3_voting_authority(rows)
+    c5 = apply_resolution_log(
+        check_5_options_price_consistency(rows), fund_name, quarter, "check5",
+        id_fn=lambda item: item["cusip"],
+        review_statuses={"REVIEW_SECURITY_MAPPING"},
+    )
+
+    shares_outstanding_by_cusip = {}
+    if market_data:
+        records = market_data.values() if isinstance(market_data, dict) else market_data
+        for md in records:
+            so = md.get("EQY_SH_OUT")
+            if so is not None and md.get("EQY_SH_OUT_status") == "PASS" and so > 0:
+                shares_outstanding_by_cusip[md["cusip"]] = so * 1_000_000
+    c6 = check_6_shares_outstanding(rows, shares_outstanding_by_cusip) if shares_outstanding_by_cusip else []
+
+    c7 = check_7_missing_fields(rows)
+    c8_raw = check_8_duplicate_rows(rows)
+    for d in c8_raw:
+        d["status"] = "REVIEW_SECURITY_MAPPING"
+        d["identifier"] = f"{d['cusip']}_row{min(d['row_numbers'])}"
+    c8 = apply_resolution_log(
+        c8_raw, fund_name, quarter, "check8",
+        id_fn=lambda item: item["identifier"],
+        review_statuses={"REVIEW_SECURITY_MAPPING"},
+    )
+
+    hard_fails = (
+        [r for r in c2 if r["status"] == "FAIL"]
+        + [r for r in c3 if r["status"] == "FAIL"]
+        + [r for r in c6 if r["status"] == "FAIL"]
+    )
+    if hard_fails:
+        status = "FAIL"
+    else:
+        status = "PASS WITH REVIEW/PENDING ITEMS"
+
+    def _open_reviews(items):
+        return [i for i in items
+                if i.get("exception_id") and not i.get("human_resolution")]
+
+    open_reviews = (
+        _open_reviews(c2) + _open_reviews(c2c) + _open_reviews(c5) + _open_reviews(c8)
+    )
+    c2b_open = c2b.get("status") == "REVIEW_VALUE_SCALING"
+
+    return {
+        "status": status,
+        "hardFailCount": len(hard_fails),
+        "check1Status": c1.get("status"),
+        "openReviewCount": len(open_reviews) + (1 if c2b_open else 0),
+        "missingFieldCount": len(c7),
+        "duplicateGroupCount": len(c8),
+    }
+
+
 def check_8_duplicate_rows(rows):
     """Audit only. Never auto-dedupe -- 13F discloses no strike or
     expiry, so identical-looking option rows can be genuinely distinct

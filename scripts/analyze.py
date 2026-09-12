@@ -472,6 +472,121 @@ NON_BROAD_INDEX_PUT_CLASSES = {
 }
 
 
+GICS_ROTATION_COVERAGE_THRESHOLD = 0.80
+
+
+def compute_gics_l3_rotation(prior_exposures, current_exposures,
+                             prior_gics_by_cusip, current_gics_by_cusip):
+    """GICS Level 3 industry rotation on true-long exposure.
+
+    Uses quarter-specific classification maps. Never apply the current
+    quarter's GICS map to a prior-quarter holding (and never the reverse).
+
+    Inclusion rules:
+      CONTINUING (held both quarters) -- usable L3 in EACH respective map
+      NEW (current only)              -- usable current-quarter L3
+      CLOSED (prior only)             -- usable prior-quarter L3
+    Anything else is excluded from the industry ranking; its true-long
+    exposure is the reconciliation remainder, not a fake Unclassified
+    industry.
+
+    Missing economic exposure (a name not held that quarter) is zero.
+    Missing classification is not treated as zero -- it is excluded.
+
+    Does not call or modify compute_sector_concentration.
+    """
+    prior_long = [e for e in prior_exposures
+                  if e["commonValue"] > 0 or e["callValue"] > 0]
+    current_long = [e for e in current_exposures
+                    if e["commonValue"] > 0 or e["callValue"] > 0]
+    prior_by_cusip = {e["cusip"]: e for e in prior_long}
+    current_by_cusip = {e["cusip"]: e for e in current_long}
+    prior_total = sum(e["trueLongExposure"] for e in prior_long)
+    current_total = sum(e["trueLongExposure"] for e in current_long)
+
+    included_prior = 0
+    included_current = 0
+    excluded_prior = 0
+    excluded_current = 0
+    industry_prior = defaultdict(float)
+    industry_current = defaultdict(float)
+    current_cusips = defaultdict(list)
+    closed_cusips = defaultdict(list)
+    new_cusips = defaultdict(list)
+    continuing_cusips = defaultdict(list)
+
+    for cusip in set(prior_by_cusip) | set(current_by_cusip):
+        prior_e = prior_by_cusip.get(cusip)
+        current_e = current_by_cusip.get(cusip)
+        prior_gics = prior_gics_by_cusip.get(cusip) if prior_e else None
+        current_gics = current_gics_by_cusip.get(cusip) if current_e else None
+
+        if prior_e and current_e:
+            if prior_gics and current_gics:
+                industry_prior[prior_gics] += prior_e["trueLongExposure"]
+                industry_current[current_gics] += current_e["trueLongExposure"]
+                included_prior += prior_e["trueLongExposure"]
+                included_current += current_e["trueLongExposure"]
+                continuing_cusips[current_gics].append(cusip)
+                if prior_gics != current_gics:
+                    continuing_cusips[prior_gics].append(cusip)
+                current_cusips[current_gics].append(cusip)
+            else:
+                excluded_prior += prior_e["trueLongExposure"]
+                excluded_current += current_e["trueLongExposure"]
+        elif current_e and not prior_e:
+            if current_gics:
+                industry_current[current_gics] += current_e["trueLongExposure"]
+                included_current += current_e["trueLongExposure"]
+                new_cusips[current_gics].append(cusip)
+                current_cusips[current_gics].append(cusip)
+            else:
+                excluded_current += current_e["trueLongExposure"]
+        else:
+            if prior_gics:
+                industry_prior[prior_gics] += prior_e["trueLongExposure"]
+                included_prior += prior_e["trueLongExposure"]
+                closed_cusips[prior_gics].append(cusip)
+            else:
+                excluded_prior += prior_e["trueLongExposure"]
+
+    prior_coverage = (included_prior / prior_total) if prior_total else 0.0
+    current_coverage = (included_current / current_total) if current_total else 0.0
+    available = (
+        prior_coverage >= GICS_ROTATION_COVERAGE_THRESHOLD
+        and current_coverage >= GICS_ROTATION_COVERAGE_THRESHOLD
+    )
+
+    industries = set(industry_prior) | set(industry_current)
+    ranked = []
+    for sector in industries:
+        prior_tl = industry_prior[sector]
+        current_tl = industry_current[sector]
+        ranked.append({
+            "sector": sector,
+            "priorTrueLong": prior_tl,
+            "currentTrueLong": current_tl,
+            "deltaTrueLong": current_tl - prior_tl,
+            "currentCusips": sorted(set(current_cusips[sector])),
+            "closedCusips": sorted(set(closed_cusips[sector])),
+            "newCusips": sorted(set(new_cusips[sector])),
+            "continuingCusips": sorted(set(continuing_cusips[sector])),
+        })
+    ranked.sort(key=lambda r: -abs(r["deltaTrueLong"]))
+
+    return {
+        "available": available,
+        "coverageThreshold": GICS_ROTATION_COVERAGE_THRESHOLD,
+        "priorCoveragePct": round(prior_coverage * 100, 1),
+        "currentCoveragePct": round(current_coverage * 100, 1),
+        "priorTrueLongTotal": prior_total,
+        "currentTrueLongTotal": current_total,
+        "excludedPriorTrueLong": excluded_prior,
+        "excludedCurrentTrueLong": excluded_current,
+        "ranked": ranked if available else [],
+    }
+
+
 def get_hedge_position_detail(positions):
     """Per-position breakdown behind the two hedge-ratio aggregates --
     compute_index_hedge_ratio above only ever returns a single summed
