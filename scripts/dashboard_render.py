@@ -146,9 +146,23 @@ function daysBadgeClass(d) { return d===null||d===undefined ? '' : d<1?'bg':d<5?
 function currentRateData() { return DATA.byBasis[state.basis][state.rate]; }
 function naCell() { return '<span class="z" title="Excluded from ADV liquidity model">n/a</span>'; }
 function integrityTag() {
-  const st = (DATA.integrity && DATA.integrity.status) || 'Unknown';
-  const cls = st === 'FAIL' ? 'fail' : (st.indexOf('PASS') === 0 ? 'warn' : 'warn');
-  return `<span class="tag ${cls}" title="Derived from integrity.py checks on this filing. Check 1 is pending without a third-party total.">${esc(st)}</span>`;
+  const integ = DATA.integrity || {};
+  const st = integ.status || 'Unknown';
+  const dups = integ.duplicateGroupCount || 0;
+  const extra = dups ? ` \u00b7 ${dups} duplicate group${dups === 1 ? '' : 's'}` : '';
+  const cls = st === 'FAIL' ? 'fail' : 'warn';
+  return `<span class="tag ${cls}" title="Derived from integrity.py checks on this filing. Check 1 is pending without a third-party total.">${esc(st)}${esc(extra)}</span>`;
+}
+function isDerivativeLeg(cls) {
+  const c = (cls || '').toUpperCase();
+  return c === 'WARRANT' || c.includes('CALL') || c.includes('PUT');
+}
+function gicsReconNotes(g, extra) {
+  const bits = [];
+  if (g.excludedPriorTrueLong) bits.push(fmtUSD(g.excludedPriorTrueLong, true) + ' of prior-quarter true-long has no usable quarter-specific GICS \u2014 excluded from rotation.');
+  if (g.excludedCurrentTrueLong) bits.push(fmtUSD(g.excludedCurrentTrueLong, true) + ' of current-quarter true-long has no usable quarter-specific GICS \u2014 excluded from rotation.');
+  if (extra) bits.push(extra);
+  return bits.length ? `<div class="section-note">${bits.join(' ')}</div>` : '';
 }
 function statusBadge(status) {
   const colors = { NEW: 'var(--blue)', CLOSED: 'var(--d2)', INCREASED: 'var(--txt)', DECREASED: 'var(--txt)', UNCHANGED: 'var(--d2)', 'RE-ENTERED': 'var(--pur)' };
@@ -284,8 +298,8 @@ function renderCompanyDetail(issuerKey) {
           <span class="stat-label issuer">${esc(inst.instrumentClass)}${inst.ticker ? ' \u00b7 ' + esc(inst.ticker) : ''} \u00b7 ${esc(inst.cusip)}</span>
           <span class="stat-value">${fmtUSD(inst.filedValue, true)}
             ${exclLabel ? ' \u00b7 <span class="badge ba">' + esc(exclLabel) + '</span>' : ''}
-            ${inst.pctOfCommonBook !== null && inst.pctOfCommonBook !== undefined ? ' \u00b7 ' + fmtPct(inst.pctOfCommonBook, 2) + ' of Common Book' : ''}
-            ${inst.isCall ? ' \u00b7 Call notional' : ''}
+            ${!isDerivativeLeg(inst.instrumentClass) && inst.pctOfCommonBook !== null && inst.pctOfCommonBook !== undefined ? ' \u00b7 ' + fmtPct(inst.pctOfCommonBook, 2) + ' of Common Book' : ''}
+            ${inst.isCall ? ' \u00b7 Call notional' : (inst.isPut ? ' \u00b7 Put notional' : (inst.instrumentClass === 'WARRANT' ? ' \u00b7 Warrant notional' : ''))}
           </span>
         </div>`;
       }).join('')}
@@ -312,11 +326,14 @@ function renderLegDetail(cusip, instrumentClass) {
       </span>
     </div>
     <div class="card-body">
-      ${exp ? `<div class="stat-row"><span class="stat-label">Filed common / long-class</span><span class="stat-value">${fmtUSD(exp.commonValue)} \u00b7 ${commonBookCell(exp)}</span></div>
+      ${isDerivativeLeg(instrumentClass) ? `
+        <div class="stat-row"><span class="stat-label">${instrumentClass === 'WARRANT' ? 'Warrant notional' : ((instrumentClass || '').toUpperCase().includes('PUT') ? 'Put notional' : 'Call notional')}</span><span class="stat-value">${fmtUSD(inst ? inst.filedValue : ((instrumentClass || '').toUpperCase().includes('PUT') ? (exp && exp.putValue) : (exp && exp.callValue)))}</span></div>
+        <div class="stat-row"><span class="stat-label">CUSIP true long (all legs)</span><span class="stat-value">${exp ? fmtUSD(exp.trueLongExposure) : '\u2014'}</span></div>
+        <div class="stat-row"><span class="stat-label">GICS L3</span><span class="stat-value">${esc((exp && exp.gicsIndustry) || 'Unclassified')}</span></div>` : (exp ? `<div class="stat-row"><span class="stat-label">Filed common / long-class</span><span class="stat-value">${fmtUSD(exp.commonValue)} \u00b7 ${commonBookCell(exp)}</span></div>
         <div class="stat-row"><span class="stat-label">Call notional</span><span class="stat-value">${fmtUSD(exp.callValue)}</span></div>
         <div class="stat-row"><span class="stat-label">Put notional</span><span class="stat-value">${fmtUSD(exp.putValue)}</span></div>
         <div class="stat-row"><span class="stat-label">True long</span><span class="stat-value">${fmtUSD(exp.trueLongExposure)}</span></div>
-        <div class="stat-row"><span class="stat-label">GICS L3</span><span class="stat-value">${esc(exp.gicsIndustry || 'Unclassified')}</span></div>` : ''}
+        <div class="stat-row"><span class="stat-label">GICS L3</span><span class="stat-value">${esc(exp.gicsIndustry || 'Unclassified')}</span></div>` : '')}
       ${liq ? `<div class="stat-row"><span class="stat-label">Verified market value</span><span class="stat-value">${fmtUSD(liq.verifiedValue)} @ $${liq.verifiedPrice.toFixed(2)}</span></div>
         <div class="stat-row"><span class="stat-label">Days to liquidate 20d / 3m</span><span class="stat-value">${fmtDays(liq.daysToLiquidate_20d)} / ${fmtDays(liq.daysToLiquidate_3m)}</span></div>
         <div class="stat-row"><span class="stat-label">ADV 20d / % SO</span><span class="stat-value">${liq.adv_20d ? liq.adv_20d.toLocaleString() : '\u2014'} / ${liq.pctSharesOutstanding!=null ? liq.pctSharesOutstanding.toFixed(2)+'%' : '\u2014'}</span></div>` : ''}
@@ -334,6 +351,7 @@ function renderOverview() {
   const r = currentRateData();
   const compounding = liveCompounding();
   const attnCount = (DATA.attentionInbox || []).reduce((n, c) => {
+    if (c.countsTowardAttention === false || c.id === 'expectedAdvExclusions') return n;
     if (c.id === 'concentratedIlliquid') return n + (r.liquidity || []).filter(p => p.concentratedAndIlliquid).length;
     return n + (c.items || []).length;
   }, 0);
@@ -400,7 +418,7 @@ function renderAttentionInbox() {
       numberValue: p.daysToLiquidate_20d,
       dollars: p.verifiedValue,
     }))};
-  });
+  }).filter(c => c.id !== 'expectedAdvExclusions' || (c.items && c.items.length));
   return `<div class="card">
     <div class="card-head"><span class="card-title">Attention Inbox</span><span class="card-note">grouped by rule type \u2014 not a single score</span></div>
     <div class="card-body">
@@ -410,7 +428,7 @@ function renderAttentionInbox() {
           <div class="inbox-row" ${item.cusip ? `data-open-leg="${item.cusip}|${item.instrumentClass||'COMMON'}"` : ''}>
             <div><span class="issuer">${esc(item.ticker || '')} ${esc(item.issuer)}</span> <span class="inbox-rule">${esc(item.rule)}</span></div>
             <div class="num">${item.numberLabel ? esc(String(item.numberLabel)) + ': ' : ''}${item.numberValue !== null && item.numberValue !== undefined && typeof item.numberValue === 'number' ? (Math.abs(item.numberValue) >= 1000 ? fmtUSD(item.numberValue, true) : item.numberValue) : esc(String(item.numberValue || ''))}${item.dollars ? ' \u00b7 ' + fmtUSD(item.dollars, true) : ''}</div>
-          </div>`).join('')}
+          </div>`).join('') + (cat.items.length > 8 ? `<div class="card-note">and ${cat.items.length - 8} more</div>` : '')}
       </div>`).join('')}
     </div>
   </div>`;
@@ -425,7 +443,7 @@ function renderQoQDollarSummary() {
   return `<div class="card">
     <div class="card-head"><span class="card-title">Dollar-Weighted Changes</span><span class="card-note">filed value \u00b7 share-status taxonomy unchanged \u00b7 <span class="clickable-name" data-tab="changes">open Changes</span></span></div>
     <div class="card-body">
-      <table><thead><tr><th class="l">Status</th><th>Count</th><th>Filed \u0394$</th><th>% of Common Book</th><th class="l">Top names</th></tr></thead><tbody>
+      <table><thead><tr><th class="l">Status</th><th>Count</th><th>Filed \u0394$</th><th>\u0394$ / Current Common Book</th><th class="l">Top names</th></tr></thead><tbody>
       ${buckets.filter(b => b.status !== 'UNCHANGED' || b.count).map(b => `<tr>
         <td class="l">${statusBadge(b.status)}</td>
         <td>${b.count}</td>
@@ -435,7 +453,7 @@ function renderQoQDollarSummary() {
       </tr>`).join('')}
       </tbody></table>
     </div>
-    <div class="section-note">\u0394$ is filed-value change (marks + activity). Status is share-count based. CLOSED is included here even when the name is absent from current holdings.</div>
+    <div class="section-note">\u0394$ is filed-value change (marks + activity). \u0394$ / Current Common Book is that change divided by this quarter's Common Book \u2014 not a position weight. Status is share-count based. CLOSED is included here even when the name is absent from current holdings.</div>
   </div>`;
 }
 
@@ -445,7 +463,7 @@ function renderGicsTeaser() {
   if (!g.available) {
     return `<div class="card"><div class="card-head"><span class="card-title">GICS Level 3 Rotation</span></div>
       <div class="card-body">GICS rotation unavailable \u2014 usable classification coverage: Prior ${fmtPct(g.priorCoveragePct)}, Current ${fmtPct(g.currentCoveragePct)}.</div>
-      ${g.excludedPriorTrueLong ? `<div class="section-note">${fmtUSD(g.excludedPriorTrueLong, true)} of prior-quarter true-long has no usable quarter-specific GICS \u2014 excluded from rotation.</div>` : ''}
+      ${gicsReconNotes(g)}
     </div>`;
   }
   const ranked = g.ranked || [];
@@ -453,7 +471,7 @@ function renderGicsTeaser() {
   const cut = ranked.filter(x => x.deltaTrueLong < 0)[0];
   return `<div class="card"><div class="card-head"><span class="card-title">GICS Level 3 Rotation</span><span class="card-note">coverage prior ${fmtPct(g.priorCoveragePct)} / current ${fmtPct(g.currentCoveragePct)} \u00b7 <span class="clickable-name" data-tab="changes">full panel</span></span></div>
     <div class="card-body">${add ? `Largest add: <span class="issuer">${esc(add.sector)}</span> ${fmtUSD(add.deltaTrueLong,true)}` : ''} ${cut ? `\u00b7 Largest cut: <span class="issuer">${esc(cut.sector)}</span> ${fmtUSD(cut.deltaTrueLong,true)}` : ''}</div>
-    ${g.excludedPriorTrueLong ? `<div class="section-note">${fmtUSD(g.excludedPriorTrueLong, true)} of prior-quarter true-long excluded (no quarter-specific GICS).</div>` : ''}
+    ${gicsReconNotes(g)}
   </div>`;
 }
 
@@ -530,7 +548,7 @@ function renderGicsRotationPanel(g) {
     return `<div class="card">
       <div class="card-head"><span class="card-title">GICS Level 3 Rotation</span></div>
       <div class="card-body">GICS rotation unavailable \u2014 usable classification coverage: Prior ${fmtPct(g.priorCoveragePct)}, Current ${fmtPct(g.currentCoveragePct)}.</div>
-      ${g.excludedPriorTrueLong ? `<div class="section-note">${fmtUSD(g.excludedPriorTrueLong, true)} of prior-quarter true-long has no usable quarter-specific GICS \u2014 excluded from rotation. Current-quarter mappings are never applied backward.</div>` : ''}
+      ${gicsReconNotes(g, 'Current-quarter mappings are never applied backward.')}
     </div>`;
   }
   const ranked = g.ranked || [];

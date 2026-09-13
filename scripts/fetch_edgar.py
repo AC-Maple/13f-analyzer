@@ -27,20 +27,13 @@ except ImportError:
     raise SystemExit("edgartools is not installed. Run: pip install edgartools")
 
 REGISTRY_FILE = Path(__file__).resolve().parent.parent / "references" / "manager_registry.json"
+SCRIPTS_DIR = Path(__file__).resolve().parent
 
 # =========================================================
 # CONFIGURATION
 # =========================================================
 
-MANAGER_NAME = sys.argv[1] if len(sys.argv) > 1 else "Armistice Capital"
-# argv[2] is REGISTER_CIK ("" to skip -- keeps the existing 2-arg
-# auto-register pattern working unchanged); argv[3] is FILING_INDEX,
-# now a real CLI argument rather than a hand-edited constant -- this
-# was the actual blocker to fetching a second quarter for QoQ position
-# comparison, not a design choice worth leaving as friction.
-REGISTER_CIK = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
 FORM_TYPE = "13F-HR"
-FILING_INDEX = int(sys.argv[3]) if len(sys.argv) > 3 else 0   # 0 = most recent, 1 = one quarter back, ...
 
 # Identity: checked in this order so a future bug-fix download of this file
 # never silently erases your setting. Prefer the EDGAR_IDENTITY environment
@@ -50,7 +43,18 @@ FILING_INDEX = int(sys.argv[3]) if len(sys.argv) > 3 else 0   # 0 = most recent,
 YOUR_IDENTITY = "REPLACE ME your.email@example.com"   # SEC rejects requests without a real one
 
 RAW_DIR = Path("data/raw_filings")
-RAW_DIR.mkdir(parents=True, exist_ok=True)
+
+# Column mapping, verified against edgar/thirteenf/parsers/infotable_xml.py
+# in v5.55.0. edgartools' "Type" field is already normalized to
+# "Shares"/"Principal" -- reversed here back to the raw SEC codes
+# ("SH"/"PRN") this pipeline's schema and SKILL.md field reference
+# document, so downstream scripts see the same convention regardless
+# of whether data came through parse_13f.py or fetch_edgar.py.
+TYPE_REVERSE_MAP = {"Shares": "SH", "Principal": "PRN"}
+
+
+class FilingSelectionError(Exception):
+    """No usable 13F-HR for this CIK / index -- not a crash."""
 
 
 def load_registry():
@@ -123,48 +127,8 @@ def resolve_manager(name_or_cik, register_as=None):
     )
 
 
-def select_filing(company):
-    """Steps 1.2-1.4: enumerate filings, prefer 13F-HR/A over the
-    original for the same period, detect 13F-NT (no infotable of its
-    own -- holdings reported through another filer)."""
-    filings = company.get_filings(form=FORM_TYPE)
-
-    if len(filings) == 0:
-        nt_filings = company.get_filings(form="13F-NT")
-        if len(nt_filings) > 0:
-            raise SystemExit(
-                f"{company.name} has 13F-NT filings only -- holdings are "
-                f"reported through another manager, not filed directly. "
-                f"This pipeline has no position data for this CIK."
-            )
-        raise SystemExit(f"No {FORM_TYPE} filings found for {company.name} (CIK {company.cik}).")
-
-    if FILING_INDEX >= len(filings):
-        raise SystemExit(
-            f"Only {len(filings)} {FORM_TYPE} filings available for "
-            f"{company.name}; FILING_INDEX={FILING_INDEX} is out of range."
-        )
-    filing = filings[FILING_INDEX]
-
-    # An amendment (13F-HR/A) for the SAME period supersedes the
-    # original. Check for one and prefer it, recording both accession
-    # numbers per SKILL.md step 1.4.
-    amendments = company.get_filings(form="13F-HR/A")
-    original_accession = filing.accession_number
-    for amend in amendments:
-        if amend.period_of_report == filing.period_of_report:
-            print(
-                f"Amendment found for period {filing.period_of_report}: "
-                f"{amend.accession_number} supersedes {original_accession}. "
-                f"Using the amendment."
-            )
-            filing = amend
-            break
-
-    return filing, original_accession
-
-
-def main():
+def configure_identity():
+    """SEC rejects requests without a real User-Agent identity."""
     identity = os.environ.get("EDGAR_IDENTITY") or YOUR_IDENTITY
     if "REPLACE ME" in identity:
         raise SystemExit(
@@ -180,43 +144,122 @@ def main():
             "resets every time you download a corrected copy of it."
         )
     set_identity(identity)
+    return identity
 
-    if REGISTER_CIK:
-        company = resolve_manager(REGISTER_CIK, register_as=MANAGER_NAME)
-    else:
-        company = resolve_manager(MANAGER_NAME)
-    print(f"Resolved '{MANAGER_NAME}' -> CIK {company.cik}, {company.name}")
 
-    filing, original_accession = select_filing(company)
+def list_original_13f_filings(company):
+    """Enumerate original 13F-HR filings only (amendments=False).
 
-    print(f"\nForm:           {filing.form}")
-    print(f"Filing date:    {filing.filing_date}")
-    print(f"Report period:  {filing.period_of_report}")
-    print(f"Accession:      {filing.accession_number}"
-          + (f"  (amends {original_accession})" if filing.accession_number != original_accession else ""))
-    print(f"Source URL:     {filing.filing_url}")
+    edgartools' get_filings(form='13F-HR') defaults to amendments=True,
+    which interleaves 13F-HR/A into the same list so FILING_INDEX no
+    longer means 'Nth original holdings report'. The same-period /A
+    overlay in apply_amendment_overlay is the documented way to prefer
+    an amendment; it is applied after this list is built.
+    """
+    filings = company.get_filings(form=FORM_TYPE, amendments=False)
 
+    if len(filings) == 0:
+        nt_filings = company.get_filings(form="13F-NT")
+        if len(nt_filings) > 0:
+            raise FilingSelectionError(
+                f"{company.name} has 13F-NT filings only -- holdings are "
+                f"reported through another manager, not filed directly. "
+                f"This pipeline has no position data for this CIK."
+            )
+        raise FilingSelectionError(
+            f"No {FORM_TYPE} filings found for {company.name} (CIK {company.cik})."
+        )
+    return filings
+
+
+def apply_amendment_overlay(filing, amendments):
+    """Prefer a same-period 13F-HR/A over the original. First match wins.
+
+    Returns (filing_to_use, original_accession).
+    """
+    original_accession = filing.accession_number
+    if amendments is None:
+        return filing, original_accession
+    for amend in amendments:
+        if amend.period_of_report == filing.period_of_report:
+            if amend.accession_number != original_accession:
+                print(
+                    f"Amendment found for period {filing.period_of_report}: "
+                    f"{amend.accession_number} supersedes {original_accession}. "
+                    f"Using the amendment."
+                )
+            return amend, original_accession
+    return filing, original_accession
+
+
+def select_filing(company, filing_index=0, filings=None, amendments=None):
+    """Steps 1.2-1.4: enumerate original 13F-HR filings, prefer 13F-HR/A
+    over the original for the same period, detect 13F-NT (no infotable of
+    its own -- holdings reported through another filer)."""
+    if filings is None:
+        filings = list_original_13f_filings(company)
+
+    if filing_index >= len(filings):
+        who = getattr(company, "name", None) or "this manager"
+        raise FilingSelectionError(
+            f"Only {len(filings)} {FORM_TYPE} filings available for "
+            f"{who}; FILING_INDEX={filing_index} is out of range."
+        )
+    filing = filings[filing_index]
+
+    # An amendment (13F-HR/A) for the SAME period supersedes the
+    # original. Check for one and prefer it, recording both accession
+    # numbers per SKILL.md step 1.4.
+    if amendments is None:
+        amendments = company.get_filings(form="13F-HR/A")
+    return apply_amendment_overlay(filing, amendments)
+
+
+def period_label_of(filing):
+    period = filing.period_of_report
+    if period is None or str(period).strip() == "":
+        raise FilingSelectionError(
+            f"Filing {filing.accession_number} has no period_of_report; "
+            f"refusing to guess a quarter."
+        )
+    return str(period)
+
+
+def archive_raw_xml(thirteenf, filing, raw_dir=None):
+    """Archive the raw XML -- immutable source of truth, data model layer 1."""
+    dest = Path(raw_dir) if raw_dir is not None else RAW_DIR
+    dest.mkdir(parents=True, exist_ok=True)
+    raw_xml = getattr(thirteenf, "infotable_xml", None)
+    if raw_xml:
+        raw_path = dest / f"{filing.accession_number}.xml"
+        raw_path.write_text(raw_xml)
+        print(f"Archived raw XML: {raw_path}")
+        return raw_path
+    print("WARNING: no raw XML available (pre-2013 TXT-format filing?) -- "
+          "nothing archived at the raw layer.")
+    return None
+
+
+def load_thirteenf(filing):
     thirteenf = filing.obj()
     if thirteenf is None or not hasattr(thirteenf, "infotable"):
-        raise SystemExit(
+        raise FilingSelectionError(
             f"filing.obj() did not return a ThirteenF for accession "
             f"{filing.accession_number} (form={filing.form}). Cannot proceed."
         )
+    return thirteenf
 
-    # Archive the raw XML -- immutable source of truth, data model layer 1.
-    # This is the actual filed document, not a derived representation.
-    raw_xml = getattr(thirteenf, "infotable_xml", None)
-    if raw_xml:
-        raw_path = RAW_DIR / f"{filing.accession_number}.xml"
-        raw_path.write_text(raw_xml)
-        print(f"Archived raw XML: {raw_path}")
-    else:
-        print("WARNING: no raw XML available (pre-2013 TXT-format filing?) -- "
-              "nothing archived at the raw layer.")
+
+def rows_from_filing(company, filing, thirteenf=None):
+    """Parse a ThirteenF infotable into this pipeline's row schema."""
+    if thirteenf is None:
+        thirteenf = load_thirteenf(filing)
 
     df = thirteenf.infotable
     if df is None or len(df) == 0:
-        raise SystemExit(f"infotable is empty for accession {filing.accession_number}.")
+        raise FilingSelectionError(
+            f"infotable is empty for accession {filing.accession_number}."
+        )
 
     # Diagnostic: confirms whether this specific filing was detected as
     # thousands-scaled. .infotable already applied the correction if so
@@ -227,14 +270,7 @@ def main():
           f"(already corrected in the Value column if True)")
     print(f"Raw columns from edgartools: {list(df.columns)}")
 
-    # Column mapping, verified against edgar/thirteenf/parsers/infotable_xml.py
-    # in v5.55.0. edgartools' "Type" field is already normalized to
-    # "Shares"/"Principal" -- reversed here back to the raw SEC codes
-    # ("SH"/"PRN") this pipeline's schema and SKILL.md field reference
-    # document, so downstream scripts see the same convention regardless
-    # of whether data came through parse_13f.py or fetch_edgar.py.
-    TYPE_REVERSE_MAP = {"Shares": "SH", "Principal": "PRN"}
-
+    period = period_label_of(filing)
     rows = []
     for i, record in enumerate(df.to_dict("records"), start=1):
         put_call = record.get("PutCall") or None          # "" -> None, matches parse_13f.py's convention
@@ -267,10 +303,55 @@ def main():
             # traces back to this specific filing (SKILL.md step 1.6).
             "_source_cik": company.cik,
             "_source_accession": filing.accession_number,
-            "_source_period_of_report": str(filing.period_of_report) if filing.period_of_report else None,
+            "_source_period_of_report": period,
             "_source_filing_date": str(filing.filing_date) if filing.filing_date else None,
             "_source_url": filing.filing_url,
         })
+    return rows
+
+
+def write_json(path, rows):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(rows, f, indent=2)
+    return path
+
+
+def print_filing_header(filing, original_accession):
+    print(f"\nForm:           {filing.form}")
+    print(f"Filing date:    {filing.filing_date}")
+    print(f"Report period:  {filing.period_of_report}")
+    print(f"Accession:      {filing.accession_number}"
+          + (f"  (amends {original_accession})" if filing.accession_number != original_accession else ""))
+    print(f"Source URL:     {filing.filing_url}")
+
+
+def main(argv=None):
+    argv = argv if argv is not None else sys.argv
+    # argv[1] manager; argv[2] is REGISTER_CIK ("" to skip -- keeps the
+    # existing 2-arg auto-register pattern working unchanged); argv[3]
+    # is FILING_INDEX, 0 = most recent original 13F-HR.
+    manager_name = argv[1] if len(argv) > 1 else "Armistice Capital"
+    register_cik = argv[2] if len(argv) > 2 and argv[2] else None
+    filing_index = int(argv[3]) if len(argv) > 3 else 0
+
+    configure_identity()
+
+    if register_cik:
+        company = resolve_manager(register_cik, register_as=manager_name)
+    else:
+        company = resolve_manager(manager_name)
+    print(f"Resolved '{manager_name}' -> CIK {company.cik}, {company.name}")
+
+    try:
+        filing, original_accession = select_filing(company, filing_index=filing_index)
+        print_filing_header(filing, original_accession)
+        thirteenf = load_thirteenf(filing)
+        archive_raw_xml(thirteenf, filing)
+        rows = rows_from_filing(company, filing, thirteenf)
+    except FilingSelectionError as exc:
+        raise SystemExit(str(exc)) from exc
 
     Path("data").mkdir(exist_ok=True)
     with open("data/parsed_rows.json", "w") as f:
@@ -298,7 +379,7 @@ def main():
     # treatment until this bug actually manifested and destroyed real
     # saved data. CIK, not fund name, since it's already a stable,
     # unambiguous per-fund identifier with no normalization edge cases.
-    period_label = filing.period_of_report or filing.accession_number
+    period_label = period_label_of(filing)
     stamped_path = Path(f"data/parsed_rows_{company.cik}_{period_label}.json")
     with open(stamped_path, "w") as f:
         json.dump(rows, f, indent=2)

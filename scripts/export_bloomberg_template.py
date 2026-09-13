@@ -51,12 +51,14 @@ reasoning as PARSEKYABLE_DES below.
 """
 import json
 import sys
+from pathlib import Path
+
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
-INPUT_FILE = "data/classified_rows.json"
-OUTPUT_FILE = sys.argv[1] if len(sys.argv) > 1 else "bloomberg_template.xlsx"
+DEFAULT_INPUT_FILE = "data/classified_rows.json"
+DEFAULT_OUTPUT_FILE = "bloomberg_template.xlsx"
 
 # Instrument classes with no meaningful traded volume of their own --
 # still priced (for the implied-price cross-check) but ADV is left blank
@@ -69,119 +71,135 @@ INPUT_FONT = Font(name="Arial", color="0000FF")     # blue -- hardcoded input (C
 FORMULA_FONT = Font(name="Arial", color="000000")   # black -- Bloomberg formula
 LABEL_FONT = Font(name="Arial", italic=True, size=9, color="666666")
 
-with open(INPUT_FILE) as f:
-    rows = json.load(f)
-
-# One entry per CUSIP -- carry the instrument classes present so the
-# import step and downstream pipeline know what this price/ADV pull
-# actually covers (e.g. a CUSIP that's ETF_INDEX_PUT-only vs one that's
-# COMMON + CALL + PUT together).
-by_cusip = {}
-for r in rows:
-    cusip = r["cusip"]
-    entry = by_cusip.setdefault(cusip, {
-        "cusip": cusip,
-        "nameOfIssuer": r["nameOfIssuer"],
-        "classes": set(),
-    })
-    entry["classes"].add(r["instrumentClass"])
-
-securities = sorted(by_cusip.values(), key=lambda e: e["nameOfIssuer"])
-
-wb = Workbook()
-ws = wb.active
-ws.title = "Bloomberg Pull"
-
-# ---- Legend ----
-ws["A1"] = "13F MARKET DATA REQUEST -- BLOOMBERG EXCEL ADD-IN"
-ws["A1"].font = Font(name="Arial", bold=True, size=12)
-ws["A2"] = (
-    "Open on a machine with the Bloomberg Terminal running. Formulas "
-    "below use the /cusip/ identifier so no separate ticker mapping is "
-    "needed. Refresh (Bloomberg ribbon > Refresh, or Ctrl+Alt+F9), save, "
-    "and return this file -- do not edit columns C onward by hand."
-)
-ws["A2"].font = LABEL_FONT
-ws.merge_cells("A2:H2")
-ws["A2"].alignment = Alignment(wrap_text=True, vertical="top")
-ws.row_dimensions[2].height = 30
-
 HEADER_ROW = 4
-headers = [
+HEADERS = [
     "Issuer", "CUSIP", "Instrument Classes Covered",
     "PX_LAST", "EQY_SH_OUT (mm)", "CUR_MKT_CAP (mm)",
     "VOLUME_AVG_20D", "VOLUME_AVG_3M", "PARSEKYABLE_DES",
     "GICS_INDUSTRY_NAME", "GICS_SUB_INDUSTRY_NAME",
 ]
-for col, h in enumerate(headers, start=1):
-    cell = ws.cell(row=HEADER_ROW, column=col, value=h)
-    cell.font = HEADER_FONT
-    cell.fill = HEADER_FILL
-    cell.alignment = Alignment(horizontal="center", wrap_text=True)
 
-for i, sec in enumerate(securities):
-    row = HEADER_ROW + 1 + i
-    cusip = sec["cusip"]
-    classes = sec["classes"]
-    needs_adv = not classes.issubset(NO_ADV_CLASSES)
 
-    ws.cell(row=row, column=1, value=sec["nameOfIssuer"]).font = FORMULA_FONT
-    cusip_cell = ws.cell(row=row, column=2, value=cusip)
-    cusip_cell.font = INPUT_FONT
-    ws.cell(row=row, column=3, value=", ".join(sorted(classes))).font = LABEL_FONT
+def export_template(rows, output_file):
+    """Write a Bloomberg BDP() workbook for these classified rows.
 
-    # Bloomberg identifier: CUSIP-keyed, not ticker-keyed, so this runs
-    # without waiting on a separate CUSIP->ticker resolution step.
-    # Verified 2026-09-02 against NVDA (CUSIP 67066G104) -- resolves.
-    bbg_id = f'"/cusip/{cusip} Equity"'
+    Same CUSIP collapse and formulas as the original module-level script.
+    Does not read or write classified_rows.json / market_data.json.
+    """
+    by_cusip = {}
+    for r in rows:
+        cusip = r["cusip"]
+        entry = by_cusip.setdefault(cusip, {
+            "cusip": cusip,
+            "nameOfIssuer": r["nameOfIssuer"],
+            "classes": set(),
+        })
+        entry["classes"].add(r["instrumentClass"])
 
-    ws.cell(row=row, column=4,
-             value=f'=BDP({bbg_id},"PX_LAST")').font = FORMULA_FONT
-    ws.cell(row=row, column=5,
-             value=f'=BDP({bbg_id},"EQY_SH_OUT")').font = FORMULA_FONT
-    ws.cell(row=row, column=6,
-             value=f'=BDP({bbg_id},"CUR_MKT_CAP")').font = FORMULA_FONT
+    securities = sorted(by_cusip.values(), key=lambda e: e["nameOfIssuer"])
 
-    if needs_adv:
-        ws.cell(row=row, column=7,
-                 value=f'=BDP({bbg_id},"VOLUME_AVG_20D")').font = FORMULA_FONT
-        ws.cell(row=row, column=8,
-                 value=f'=BDP({bbg_id},"VOLUME_AVG_3M")').font = FORMULA_FONT
-    else:
-        note = ws.cell(row=row, column=7, value="N/A -- warrant, no ADV model")
-        note.font = LABEL_FONT
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Bloomberg Pull"
 
-    # Fallback ticker-resolution source for security_master.py -- pulled
-    # for every security (including warrants, unlike ADV) since it's
-    # cheap and useful as a human-readable sanity check on its own.
-    ws.cell(row=row, column=9,
-             value=f'=BDP({bbg_id},"PARSEKYABLE_DES")').font = FORMULA_FONT
+    ws["A1"] = "13F MARKET DATA REQUEST -- BLOOMBERG EXCEL ADD-IN"
+    ws["A1"].font = Font(name="Arial", bold=True, size=12)
+    ws["A2"] = (
+        "Open on a machine with the Bloomberg Terminal running. Formulas "
+        "below use the /cusip/ identifier so no separate ticker mapping is "
+        "needed. Refresh (Bloomberg ribbon > Refresh, or Ctrl+Alt+F9), save, "
+        "and return this file -- do not edit columns C onward by hand."
+    )
+    ws["A2"].font = LABEL_FONT
+    ws.merge_cells("A2:H2")
+    ws["A2"].alignment = Alignment(wrap_text=True, vertical="top")
+    ws.row_dimensions[2].height = 30
 
-    # Sector classification for analyze.py's compute_sector_concentration.
-    # Same reasoning as PARSEKYABLE_DES: pulled for every security
-    # (including warrants) since a warrant's underlying company still
-    # has a sector, even though the warrant itself has no ADV model.
-    ws.cell(row=row, column=10,
-             value=f'=BDP({bbg_id},"GICS_INDUSTRY_NAME")').font = FORMULA_FONT
-    ws.cell(row=row, column=11,
-             value=f'=BDP({bbg_id},"GICS_SUB_INDUSTRY_NAME")').font = FORMULA_FONT
+    for col, h in enumerate(HEADERS, start=1):
+        cell = ws.cell(row=HEADER_ROW, column=col, value=h)
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
 
-for col in range(1, 12):
-    ws.column_dimensions[get_column_letter(col)].width = 20
-ws.column_dimensions["A"].width = 32
-ws.column_dimensions["C"].width = 24
+    for i, sec in enumerate(securities):
+        row = HEADER_ROW + 1 + i
+        cusip = sec["cusip"]
+        classes = sec["classes"]
+        needs_adv = not classes.issubset(NO_ADV_CLASSES)
 
-ws.freeze_panes = f"A{HEADER_ROW + 1}"
+        ws.cell(row=row, column=1, value=sec["nameOfIssuer"]).font = FORMULA_FONT
+        cusip_cell = ws.cell(row=row, column=2, value=cusip)
+        cusip_cell.font = INPUT_FONT
+        ws.cell(row=row, column=3, value=", ".join(sorted(classes))).font = LABEL_FONT
 
-wb.save(OUTPUT_FILE)
+        # Bloomberg identifier: CUSIP-keyed, not ticker-keyed, so this runs
+        # without waiting on a separate CUSIP->ticker resolution step.
+        # Verified 2026-09-02 against NVDA (CUSIP 67066G104) -- resolves.
+        bbg_id = f'"/cusip/{cusip} Equity"'
 
-adv_needed = sum(1 for s in securities if not s["classes"].issubset(NO_ADV_CLASSES))
-print(f"Wrote {OUTPUT_FILE}")
-print(f"{len(securities)} distinct CUSIPs ({len(rows)} raw filing rows collapsed to this)")
-print(f"{adv_needed} need ADV fields; {len(securities) - adv_needed} are warrant-only (price only)")
-print("\nDO NOT run recalc.py on this file -- see module docstring.")
-print("PX_LAST, EQY_SH_OUT, CUR_MKT_CAP, VOLUME_AVG_20D, VOLUME_AVG_3M, and the /cusip/ "
-      "identifier syntax are user-confirmed against a live Bloomberg session.")
-print("GICS_INDUSTRY_NAME, GICS_SUB_INDUSTRY_NAME: mnemonics live-confirmed 2026-09-08 "
-      "(see SKILL.md) -- not yet confirmed pulled through THIS per-CUSIP template at scale; "
-      "check these two columns specifically on the first real refresh of this file.")
+        ws.cell(row=row, column=4,
+                 value=f'=BDP({bbg_id},"PX_LAST")').font = FORMULA_FONT
+        ws.cell(row=row, column=5,
+                 value=f'=BDP({bbg_id},"EQY_SH_OUT")').font = FORMULA_FONT
+        ws.cell(row=row, column=6,
+                 value=f'=BDP({bbg_id},"CUR_MKT_CAP")').font = FORMULA_FONT
+
+        if needs_adv:
+            ws.cell(row=row, column=7,
+                     value=f'=BDP({bbg_id},"VOLUME_AVG_20D")').font = FORMULA_FONT
+            ws.cell(row=row, column=8,
+                     value=f'=BDP({bbg_id},"VOLUME_AVG_3M")').font = FORMULA_FONT
+        else:
+            note = ws.cell(row=row, column=7, value="N/A -- warrant, no ADV model")
+            note.font = LABEL_FONT
+
+        # Fallback ticker-resolution source for security_master.py -- pulled
+        # for every security (including warrants, unlike ADV) since it's
+        # cheap and useful as a human-readable sanity check on its own.
+        ws.cell(row=row, column=9,
+                 value=f'=BDP({bbg_id},"PARSEKYABLE_DES")').font = FORMULA_FONT
+
+        # Sector classification for analyze.py's compute_sector_concentration.
+        # Same reasoning as PARSEKYABLE_DES: pulled for every security
+        # (including warrants) since a warrant's underlying company still
+        # has a sector, even though the warrant itself has no ADV model.
+        ws.cell(row=row, column=10,
+                 value=f'=BDP({bbg_id},"GICS_INDUSTRY_NAME")').font = FORMULA_FONT
+        ws.cell(row=row, column=11,
+                 value=f'=BDP({bbg_id},"GICS_SUB_INDUSTRY_NAME")').font = FORMULA_FONT
+
+    for col in range(1, 12):
+        ws.column_dimensions[get_column_letter(col)].width = 20
+    ws.column_dimensions["A"].width = 32
+    ws.column_dimensions["C"].width = 24
+
+    ws.freeze_panes = f"A{HEADER_ROW + 1}"
+
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(output_path)
+
+    adv_needed = sum(1 for s in securities if not s["classes"].issubset(NO_ADV_CLASSES))
+    print(f"Wrote {output_path}")
+    print(f"{len(securities)} distinct CUSIPs ({len(rows)} raw filing rows collapsed to this)")
+    print(f"{adv_needed} need ADV fields; {len(securities) - adv_needed} are warrant-only (price only)")
+    print("\nDO NOT run recalc.py on this file -- see module docstring.")
+    print("PX_LAST, EQY_SH_OUT, CUR_MKT_CAP, VOLUME_AVG_20D, VOLUME_AVG_3M, and the /cusip/ "
+          "identifier syntax are user-confirmed against a live Bloomberg session.")
+    print("GICS_INDUSTRY_NAME, GICS_SUB_INDUSTRY_NAME: mnemonics live-confirmed 2026-09-08 "
+          "(see SKILL.md) -- not yet confirmed pulled through THIS per-CUSIP template at scale; "
+          "check these two columns specifically on the first real refresh of this file.")
+    return output_path
+
+
+def main(argv=None):
+    argv = argv if argv is not None else sys.argv
+    input_file = DEFAULT_INPUT_FILE
+    output_file = argv[1] if len(argv) > 1 else DEFAULT_OUTPUT_FILE
+    with open(input_file) as f:
+        rows = json.load(f)
+    export_template(rows, output_file)
+
+
+if __name__ == "__main__":
+    main()

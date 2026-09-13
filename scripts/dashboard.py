@@ -24,6 +24,10 @@ Reads:  data/classified_rows.json, data/market_data.json
 Writes: <output_file.html> if given; otherwise defaults to
         dashboard_{fund_name}_{current_quarter}.html so different funds
         and different quarters of the same fund never silently collide.
+
+Production rebuilds that must not swap those shared working files:
+  python build_fund_dashboard.py --manager NAME --quarter YYYY-MM-DD
+  python build_fund_dashboard.py --all
 """
 import json
 import re
@@ -160,16 +164,59 @@ def quarter_market_data_path(rows):
     return Path(f"data/market_data_{cik}_{period}.json")
 
 
+MARKET_STAMP_MIN_PRECISION = 0.80
+
+
+class MarketDataStampMismatch(ValueError):
+    """Raised when market_data.json does not belong to this filing."""
+
+
+def filing_cusips_from_rows(rows):
+    return {r.get("cusip") for r in (rows or []) if r.get("cusip")}
+
+
 def persist_quarter_market_data(rows, market_data):
     """Write THIS quarter's own market-data pull. Used later as that
     quarter's classification snapshot -- never as a substitute for a
-    different quarter's missing GICS."""
+    different quarter's missing GICS.
+
+    Guards against a shared working market_data.json from another fund:
+    at least MARKET_STAMP_MIN_PRECISION of the market-data CUSIPs must
+    appear in this filing. On success, only matching CUSIPs are written
+    so leftover template rows cannot become this quarter's GICS map.
+    Does not change any financial calculation."""
     path = quarter_market_data_path(rows)
     if path is None:
         return
-    records = list(market_data.values()) if isinstance(market_data, dict) else market_data
+    records = list(market_data.values()) if isinstance(market_data, dict) else list(market_data or [])
+    filing_cusips = filing_cusips_from_rows(rows)
+    market_cusips = {r.get("cusip") for r in records if r.get("cusip")}
+    matched = filing_cusips & market_cusips
+    if not market_cusips:
+        raise MarketDataStampMismatch(
+            f"Refusing to write {path}: market data has no CUSIPs, so it "
+            f"cannot be this filing's quarter-specific snapshot "
+            f"({len(filing_cusips)} filing CUSIPs)."
+        )
+    precision = len(matched) / len(market_cusips)
+    if precision < MARKET_STAMP_MIN_PRECISION:
+        raise MarketDataStampMismatch(
+            f"Refusing to write {path}: only {len(matched)} of "
+            f"{len(market_cusips)} market-data CUSIPs ({precision:.1%}) "
+            f"appear in this filing ({len(filing_cusips)} CUSIPs). "
+            f"Need {MARKET_STAMP_MIN_PRECISION:.0%} overlap so a different "
+            f"fund's pull cannot overwrite this quarter's GICS snapshot. "
+            f"Copy the matching market_data_{{cik}}_{{period}}.json into "
+            f"data/market_data.json before rebuilding."
+        )
+    matched_records = [r for r in records if r.get("cusip") in matched]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(matched_records, indent=2), encoding="utf-8")
+    dropped = len(records) - len(matched_records)
+    if dropped:
+        print(f"Quarter market snapshot {path} wrote {len(matched_records)} "
+              f"CUSIPs matching this filing; dropped {dropped} unmatched "
+              f"market-data row(s).")
 
 
 def load_quarter_specific_market_data(rows):
@@ -324,8 +371,9 @@ def build_attention_inbox(liquidity, excluded, exposures, qoq_statuses, unclassi
     concentrated.sort(key=lambda x: -(x["dollars"] or 0))
 
     coverage = []
+    expected_adv = []
     for e in excluded:
-        coverage.append({
+        item = {
             "cusip": e["cusip"],
             "instrumentClass": e.get("instrumentClass"),
             "issuer": e["issuer"],
@@ -334,7 +382,12 @@ def build_attention_inbox(liquidity, excluded, exposures, qoq_statuses, unclassi
             "numberLabel": "instrument",
             "numberValue": e.get("instrumentClass"),
             "dollars": e.get("filedValue"),
-        })
+        }
+        # Methodology exclusions (options/warrants) are not coverage gaps.
+        if e.get("instrumentClass") not in ADV_ELIGIBLE_CLASSES:
+            expected_adv.append(item)
+        else:
+            coverage.append(item)
     if unclassified_true_long:
         coverage.append({
             "cusip": None,
@@ -375,6 +428,7 @@ def build_attention_inbox(liquidity, excluded, exposures, qoq_statuses, unclassi
             "dollars": None,
         })
     coverage.sort(key=lambda x: -(x["dollars"] or 0))
+    expected_adv.sort(key=lambda x: -(x["dollars"] or 0))
 
     moves = []
     for s in qoq_statuses:
@@ -399,6 +453,8 @@ def build_attention_inbox(liquidity, excluded, exposures, qoq_statuses, unclassi
         {"id": "regulatory", "label": "Regulatory / threshold proximity", "items": regulatory},
         {"id": "concentratedIlliquid", "label": "Concentrated and illiquid", "items": concentrated},
         {"id": "coverage", "label": "Coverage gaps / unresolved corrections", "items": coverage},
+        {"id": "expectedAdvExclusions", "label": "Expected ADV exclusions", "items": expected_adv,
+         "countsTowardAttention": False},
         {"id": "dollarMoves", "label": "Largest dollar moves", "items": moves},
     ]
 
@@ -775,6 +831,28 @@ __JS__
 </html>
 """
 
+def write_dashboard_html(data, output_file, fund_name="fund"):
+    """Wrap a precomputed payload in the existing renderer. No new math."""
+    from dashboard_render import CSS, JS
+    html = (HTML_TEMPLATE
+            .replace("__FUND_NAME__", data.get("managerDisplayName") or fund_name)
+            .replace("__CSS__", CSS)
+            .replace("__DATA_JSON__", json.dumps(data))
+            .replace("__JS__", JS))
+    Path(output_file).write_text(html, encoding="utf-8")
+    return html
+
+
+def render_and_write_dashboard(fund_name, classified_rows, market_data,
+                               prior_quarters_rows, output_file):
+    data = build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters_rows)
+    html = write_dashboard_html(data, output_file, fund_name=fund_name)
+    print(f"Wrote {output_file}  ({len(html):,} bytes)")
+    print(f"{data['positionCount']} economic positions, "
+          f"${data['fullBookValue']:,.0f} full book value")
+    return data
+
+
 if __name__ == "__main__":
     fund_name = sys.argv[1] if len(sys.argv) > 1 else "fund"
     explicit_output_file = sys.argv[2] if len(sys.argv) > 2 else None
@@ -814,16 +892,10 @@ if __name__ == "__main__":
               "and held-all-quarters detection.")
 
     print(f"Computing across {len(PARTICIPATION_RATES)} participation rates...")
-    data = build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters_rows)
-
-    from dashboard_render import CSS, JS
-    html = (HTML_TEMPLATE
-            .replace("__FUND_NAME__", fund_name)
-            .replace("__CSS__", CSS)
-            .replace("__DATA_JSON__", json.dumps(data))
-            .replace("__JS__", JS))
-
-    Path(output_file).write_text(html, encoding="utf-8")
-    print(f"Wrote {output_file}  ({len(html):,} bytes)")
-    print(f"{data['positionCount']} economic positions, "
-          f"${data['fullBookValue']:,.0f} full book value")
+    try:
+        render_and_write_dashboard(
+            fund_name, classified_rows, market_data, prior_quarters_rows, output_file
+        )
+    except MarketDataStampMismatch as exc:
+        print(f"ERROR: {exc}")
+        sys.exit(1)

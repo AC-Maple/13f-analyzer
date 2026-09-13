@@ -32,20 +32,57 @@ warrant's blank VOLUME_AVG_3M, for instance, is expected by design and
 not worth a resolution-log entry). Without this, a name with genuinely
 no Bloomberg coverage re-surfaces identically on every future import,
 with no way to record "yes, checked, this one just isn't covered."
-Usage: python import_bloomberg_data.py <refreshed_file.xlsx> [fund_name]
+
+Usage (from the repo root, or from scripts/; PowerShell):
+
+  python scripts/import_bloomberg_data.py --input data/bloomberg_template_1856103_2026-06-30.xlsx --classified data/classified_rows_1856103_2026-06-30.json --output data/market_data_1856103_2026-06-30.json
+
+  python scripts/import_bloomberg_data.py bloomberg_template.xlsx pinnbrook
 """
+from __future__ import annotations
+
+import argparse
 import json
+import os
 import re
 import sys
+from contextlib import contextmanager
+from pathlib import Path
+
 from openpyxl import load_workbook
 
+from fund_io import (
+    CLASSIFIED_NAME_RE,
+    DATA_DIR,
+    SCRIPTS_DIR,
+    FundBuildError,
+    load_json,
+    market_write_path,
+    normalize_cik,
+    parse_quarter,
+    resolve_manager,
+    shared_working_files,
+    validate_classified,
+)
 from resolution_log import make_exception_id, get_resolution, derive_quarter_label
 
-INPUT_FILE = sys.argv[1] if len(sys.argv) > 1 else "bloomberg_template.xlsx"
-FUND_NAME = sys.argv[2] if len(sys.argv) > 2 else "fund"
-OUTPUT_FILE = "data/market_data.json"
+DEFAULT_INPUT_FILE = "bloomberg_template.xlsx"
+DEFAULT_FUND_NAME = "fund"
+DEFAULT_OUTPUT_FILE = "data/market_data.json"
 
 BLOOMBERG_ERROR_PATTERN = re.compile(r"^#N/A", re.IGNORECASE)
+
+# Same 80% gate as dashboard.persist_quarter_market_data -- duplicated
+# here so this module does not import dashboard.py. Do not change the
+# formula independently of that function.
+MARKET_STAMP_MIN_PRECISION = 0.80
+
+TEMPLATE_NAME_RE = re.compile(
+    r"^bloomberg_template_(.+)_(\d{4}-\d{2}-\d{2})\.xlsx$"
+)
+MARKET_NAME_RE = re.compile(
+    r"^market_data_(.+)_(\d{4}-\d{2}-\d{2})\.json$"
+)
 
 # (column, expected_type) -- PARSEKYABLE_DES is a string identifier
 # ("NVDA US Equity"), not a number, and needs different validation than
@@ -131,162 +168,457 @@ def classify_cell(value, expected_type):
     return None, "REVIEW_MARKET_DATA"
 
 
-wb = load_workbook(INPUT_FILE, data_only=True)
-ws = wb.active
+@contextmanager
+def _scripts_cwd():
+    previous = Path.cwd()
+    os.chdir(SCRIPTS_DIR)
+    try:
+        yield
+    finally:
+        os.chdir(previous)
 
-results = []
-for row_num in range(HEADER_ROW + 1, ws.max_row + 1):
-    # Restored 2026-09-11 -- addressed by (row, column) via ws.cell(),
-    # not by indexing into the row tuple from iter_rows(). That tuple
-    # is only as wide as openpyxl thinks the sheet's used range is,
-    # which can be narrower than max(FIELD_COLUMNS) on a workbook
-    # exported before a newer column existed (e.g. a pre-GICS
-    # bloomberg_template.xlsx re-run through a newer FIELD_COLUMNS).
-    # ws.cell() on a column past the sheet's populated range just
-    # returns an empty cell (value=None), which classify_cell already
-    # treats as PENDING_EXTERNAL_DATA -- exactly the right outcome for
-    # "this workbook predates this field," not a crash. This exact fix
-    # was already shipped once (Pinnbrook session) and was silently
-    # reverted when this file was rewritten for liquidity_override;
-    # restoring it here rather than leaving the fragile version in
-    # place now that the regression was found.
-    cusip_val = ws.cell(row=row_num, column=2).value
-    if cusip_val in (None, ""):
-        continue
-    cusip = str(cusip_val).strip()
-    issuer = ws.cell(row=row_num, column=1).value
 
-    record = {"cusip": cusip, "issuer": issuer}
-    for field, (col_idx, expected_type) in FIELD_COLUMNS.items():
-        cell = ws.cell(row=row_num, column=col_idx)
-        clean_value, status = classify_cell(cell.value, expected_type)
-        record[field] = clean_value
-        record[f"{field}_status"] = status
-    results.append(record)
+def _die(message: str, code: int = 1) -> None:
+    print(f"ERROR: {message}", file=sys.stderr)
+    raise SystemExit(code)
 
-# Derive quarter the same way every other producer does -- from
-# classified_rows.json's row metadata if it exists (it will, in the
-# normal pipeline order: classify runs before this step). Falls back to
-# a warned placeholder, never a silent guess.
-try:
-    with open("data/classified_rows.json") as f:
-        classified_rows = json.load(f)
-except FileNotFoundError:
-    classified_rows = []
-QUARTER = derive_quarter_label(classified_rows)
 
-# Per-(cusip, field) exception IDs, covering EVERY field this pipeline
-# pulls -- not just PX_LAST's "no coverage at all" case as before. The
-# VOLUME_AVG_20D=0 fix above produces REVIEW_MARKET_DATA on individual
-# fields (found on Melqart's real data: EA, Chart Industries, Catalyst
-# Pharmaceuticals) that had no exception ID at all under the old,
-# PX_LAST-only scope -- meaning there was no way to even attach a
-# resolution to them. This replaces that narrower mechanism rather than
-# running two parallel ones; PX_LAST is just one of the fields covered
-# now, not a special case.
-still_open = []
-corrected_count = 0
-already_resolved_no_value = []
+def _resolved(path: Path) -> Path:
+    return path.expanduser().resolve()
 
-for r in results:
-    for field in FIELD_COLUMNS:
-        status = r[f"{field}_status"]
-        if status not in ("REVIEW_MARKET_DATA", "PENDING_EXTERNAL_DATA"):
+
+def read_workbook(input_file):
+    wb = load_workbook(input_file, data_only=True)
+    ws = wb.active
+
+    results = []
+    for row_num in range(HEADER_ROW + 1, ws.max_row + 1):
+        # Restored 2026-09-11 -- addressed by (row, column) via ws.cell(),
+        # not by indexing into the row tuple from iter_rows(). That tuple
+        # is only as wide as openpyxl thinks the sheet's used range is,
+        # which can be narrower than max(FIELD_COLUMNS) on a workbook
+        # exported before a newer column existed (e.g. a pre-GICS
+        # bloomberg_template.xlsx re-run through a newer FIELD_COLUMNS).
+        # ws.cell() on a column past the sheet's populated range just
+        # returns an empty cell (value=None), which classify_cell already
+        # treats as PENDING_EXTERNAL_DATA -- exactly the right outcome for
+        # "this workbook predates this field," not a crash. This exact fix
+        # was already shipped once (Pinnbrook session) and was silently
+        # reverted when this file was rewritten for liquidity_override;
+        # restoring it here rather than leaving the fragile version in
+        # place now that the regression was found.
+        cusip_val = ws.cell(row=row_num, column=2).value
+        if cusip_val in (None, ""):
             continue
-        exception_id = make_exception_id(FUND_NAME, QUARTER, f"marketdata_{field}", r["cusip"])
-        resolution = get_resolution(exception_id)
+        cusip = str(cusip_val).strip()
+        issuer = ws.cell(row=row_num, column=1).value
 
-        if resolution and resolution["decision"] == "CORRECT" and resolution.get("correction") is not None:
-            _, expected_type = FIELD_COLUMNS[field]
-            raw_correction = resolution["correction"]
-            if expected_type == "numeric":
-                try:
-                    corrected_value = float(raw_correction)
-                except (TypeError, ValueError):
-                    # A human recorded a CORRECT decision but the stored
-                    # correction doesn't parse as a number for a numeric
-                    # field -- never silently apply it. Surfaced as still
-                    # open, same as no resolution at all, rather than
-                    # guessing what was meant.
-                    r[f"{field}_exception_id"] = exception_id
-                    still_open.append((r, field, exception_id, None))
-                    continue
+        record = {"cusip": cusip, "issuer": issuer}
+        for field, (col_idx, expected_type) in FIELD_COLUMNS.items():
+            cell = ws.cell(row=row_num, column=col_idx)
+            clean_value, status = classify_cell(cell.value, expected_type)
+            record[field] = clean_value
+            record[f"{field}_status"] = status
+        results.append(record)
+    return results
+
+
+def apply_resolutions(results, fund_name, quarter):
+    # Per-(cusip, field) exception IDs, covering EVERY field this pipeline
+    # pulls -- not just PX_LAST's "no coverage at all" case as before. The
+    # VOLUME_AVG_20D=0 fix above produces REVIEW_MARKET_DATA on individual
+    # fields (found on Melqart's real data: EA, Chart Industries, Catalyst
+    # Pharmaceuticals) that had no exception ID at all under the old,
+    # PX_LAST-only scope -- meaning there was no way to even attach a
+    # resolution to them. This replaces that narrower mechanism rather than
+    # running two parallel ones; PX_LAST is just one of the fields covered
+    # now, not a special case.
+    still_open = []
+    already_resolved_no_value = []
+
+    for r in results:
+        for field in FIELD_COLUMNS:
+            status = r[f"{field}_status"]
+            if status not in ("REVIEW_MARKET_DATA", "PENDING_EXTERNAL_DATA"):
+                continue
+            exception_id = make_exception_id(fund_name, quarter, f"marketdata_{field}", r["cusip"])
+            resolution = get_resolution(exception_id)
+
+            if resolution and resolution["decision"] == "CORRECT" and resolution.get("correction") is not None:
+                _, expected_type = FIELD_COLUMNS[field]
+                raw_correction = resolution["correction"]
+                if expected_type == "numeric":
+                    try:
+                        corrected_value = float(raw_correction)
+                    except (TypeError, ValueError):
+                        # A human recorded a CORRECT decision but the stored
+                        # correction doesn't parse as a number for a numeric
+                        # field -- never silently apply it. Surfaced as still
+                        # open, same as no resolution at all, rather than
+                        # guessing what was meant.
+                        r[f"{field}_exception_id"] = exception_id
+                        still_open.append((r, field, exception_id, None))
+                        continue
+                else:
+                    corrected_value = raw_correction
+                r[field] = corrected_value
+                r[f"{field}_status"] = "PASS_HUMAN_CORRECTED"
+                r[f"{field}_correction_source"] = (
+                    f"CORRECT by {resolution['reviewer']} at {resolution['timestamp']}"
+                    + (f" -- {resolution['note']}" if resolution.get("note") else "")
+                )
+            elif resolution:
+                # APPROVE or ESCALATE -- a human has looked at this, but
+                # there's no replacement value to apply. Still flagged (the
+                # underlying value is still whatever Bloomberg returned),
+                # but shown as already-reviewed, not a fresh gap.
+                r[f"{field}_exception_id"] = exception_id
+                r[f"{field}_human_resolution"] = (
+                    f"{resolution['decision']} by {resolution['reviewer']} at {resolution['timestamp']}"
+                    + (f" -- {resolution['note']}" if resolution.get("note") else "")
+                )
+                already_resolved_no_value.append((r, field, exception_id, resolution))
             else:
-                corrected_value = raw_correction
-            r[field] = corrected_value
-            r[f"{field}_status"] = "PASS_HUMAN_CORRECTED"
-            r[f"{field}_correction_source"] = (
-                f"CORRECT by {resolution['reviewer']} at {resolution['timestamp']}"
-                + (f" -- {resolution['note']}" if resolution.get("note") else "")
-            )
-            corrected_count += 1
-        elif resolution:
-            # APPROVE or ESCALATE -- a human has looked at this, but
-            # there's no replacement value to apply. Still flagged (the
-            # underlying value is still whatever Bloomberg returned),
-            # but shown as already-reviewed, not a fresh gap.
-            r[f"{field}_exception_id"] = exception_id
-            r[f"{field}_human_resolution"] = (
-                f"{resolution['decision']} by {resolution['reviewer']} at {resolution['timestamp']}"
-                + (f" -- {resolution['note']}" if resolution.get("note") else "")
-            )
-            already_resolved_no_value.append((r, field, exception_id, resolution))
-        else:
-            r[f"{field}_exception_id"] = exception_id
-            still_open.append((r, field, exception_id, None))
+                r[f"{field}_exception_id"] = exception_id
+                still_open.append((r, field, exception_id, None))
 
-    # Liquidity override -- separate from the per-field mechanism above
-    # and checked unconditionally for every CUSIP, not just ones with a
-    # flagged field. A resolved cash merger (Chart Industries / Baker
-    # Hughes, $210.00/share all-cash, closed 7/16/2026) isn't a
-    # correction to what Bloomberg's VOLUME_AVG_20D "really" is -- no
-    # finite ADV number produces exactly 0 days to liquidate through the
-    # normal shares/(adv*rate) formula, it only ever approaches zero.
-    # Forcing this through the per-field correction mechanism would mean
-    # inventing a fake trading volume for a security that no longer
-    # trades at all. This is a distinct kind of fact -- "this position
-    # is now a contractually guaranteed cash claim" -- so it gets its
-    # own exception scope and bypasses the ADV math entirely in
-    # liquidity.py, rather than feeding a fabricated number into it.
-    liq_override_id = make_exception_id(FUND_NAME, QUARTER, "liquidity_override", r["cusip"])
-    liq_resolution = get_resolution(liq_override_id)
-    if liq_resolution and liq_resolution["decision"] == "CORRECT" and liq_resolution.get("correction"):
-        r["liquidityOverride"] = liq_resolution["correction"]
-        r["liquidityOverrideSource"] = (
-            f"CORRECT by {liq_resolution['reviewer']} at {liq_resolution['timestamp']}"
-            + (f" -- {liq_resolution['note']}" if liq_resolution.get("note") else "")
+        # Liquidity override -- separate from the per-field mechanism above
+        # and checked unconditionally for every CUSIP, not just ones with a
+        # flagged field. A resolved cash merger (Chart Industries / Baker
+        # Hughes, $210.00/share all-cash, closed 7/16/2026) isn't a
+        # correction to what Bloomberg's VOLUME_AVG_20D "really" is -- no
+        # finite ADV number produces exactly 0 days to liquidate through the
+        # normal shares/(adv*rate) formula, it only ever approaches zero.
+        # Forcing this through the per-field correction mechanism would mean
+        # inventing a fake trading volume for a security that no longer
+        # trades at all. This is a distinct kind of fact -- "this position
+        # is now a contractually guaranteed cash claim" -- so it gets its
+        # own exception scope and bypasses the ADV math entirely in
+        # liquidity.py, rather than feeding a fabricated number into it.
+        liq_override_id = make_exception_id(fund_name, quarter, "liquidity_override", r["cusip"])
+        liq_resolution = get_resolution(liq_override_id)
+        if liq_resolution and liq_resolution["decision"] == "CORRECT" and liq_resolution.get("correction"):
+            r["liquidityOverride"] = liq_resolution["correction"]
+            r["liquidityOverrideSource"] = (
+                f"CORRECT by {liq_resolution['reviewer']} at {liq_resolution['timestamp']}"
+                + (f" -- {liq_resolution['note']}" if liq_resolution.get("note") else "")
+            )
+        r["liquidity_override_exception_id"] = liq_override_id  # always recorded, whether resolved or not -- lets a human resolve it later without re-deriving the id
+
+    return still_open, already_resolved_no_value
+
+
+def print_import_report(results, input_file, output_file, still_open, already_resolved_no_value):
+    print(f"Read {len(results)} securities from {input_file}")
+
+    all_statuses = [record[f"{field}_status"] for record in results for field in FIELD_COLUMNS]
+    pending = sum(1 for s in all_statuses if s == "PENDING_EXTERNAL_DATA")
+    review = sum(1 for s in all_statuses if s == "REVIEW_MARKET_DATA")
+    na = sum(1 for s in all_statuses if s == "NOT_APPLICABLE")
+    passed = sum(1 for s in all_statuses if s == "PASS")
+    corrected = sum(1 for s in all_statuses if s == "PASS_HUMAN_CORRECTED")
+    print(f"  {passed} field values PASS")
+    if corrected:
+        print(f"  {corrected} PASS_HUMAN_CORRECTED (Bloomberg value replaced by a recorded human correction)")
+    print(f"  {pending} PENDING_EXTERNAL_DATA (Bloomberg error or blank -- no coverage or not yet refreshed)")
+    print(f"  {review} REVIEW_MARKET_DATA (unexpected value -- needs a look)")
+    print(f"  {na} NOT_APPLICABLE (warrant ADV, as expected)")
+
+    if still_open:
+        print(f"\n{len(still_open)} field(s) need a decision:")
+        for r, field, exception_id, _ in still_open:
+            print(f"    {r['cusip']}  {r['issuer']:30s} {field:16s} [{exception_id}]")
+        print(f"\n  python resolution_log.py resolve <exception_id> APPROVE <reviewer> [note]")
+        print(f"  python resolution_log.py resolve <exception_id> ESCALATE <reviewer> [note]")
+        print(f"  python resolution_log.py resolve <exception_id> CORRECT <reviewer> <correction_value> [note]")
+
+    if already_resolved_no_value:
+        print(f"\n{len(already_resolved_no_value)} field(s) previously reviewed (APPROVE/ESCALATE, no replacement value) -- not fresh flags:")
+        for r, field, exception_id, resolution in already_resolved_no_value:
+            print(f"    {r['cusip']}  {r['issuer']:30s} {field:16s} -- {resolution['decision']} by {resolution['reviewer']}")
+
+    print(f"\nWrote {output_file}")
+
+
+def write_market_json(path, records):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(records, f, indent=2)
+
+
+def filing_cusips_from_rows(rows):
+    return {r.get("cusip") for r in (rows or []) if r.get("cusip")}
+
+
+def filter_matched_market_records(records, classified_rows, output_path):
+    """Same 80% precision gate as dashboard.persist_quarter_market_data."""
+    filing_cusips = filing_cusips_from_rows(classified_rows)
+    market_cusips = {r.get("cusip") for r in records if r.get("cusip")}
+    matched = filing_cusips & market_cusips
+    if not market_cusips:
+        raise FundBuildError(
+            f"Refusing to write {output_path}: market data has no CUSIPs, so it "
+            f"cannot be this filing's quarter-specific snapshot "
+            f"({len(filing_cusips)} filing CUSIPs)."
         )
-    r["liquidity_override_exception_id"] = liq_override_id  # always recorded, whether resolved or not -- lets a human resolve it later without re-deriving the id
+    precision = len(matched) / len(market_cusips)
+    if precision < MARKET_STAMP_MIN_PRECISION:
+        raise FundBuildError(
+            f"Refusing to write {output_path}: only {len(matched)} of "
+            f"{len(market_cusips)} market-data CUSIPs ({precision:.1%}) "
+            f"appear in this filing ({len(filing_cusips)} CUSIPs). "
+            f"Need {MARKET_STAMP_MIN_PRECISION:.0%} overlap so a different "
+            f"fund's pull cannot overwrite this quarter's GICS snapshot."
+        )
+    matched_records = [r for r in records if r.get("cusip") in matched]
+    dropped = len(records) - len(matched_records)
+    return matched_records, dropped
 
-with open(OUTPUT_FILE, "w") as f:
-    json.dump(results, f, indent=2)
 
-print(f"Read {len(results)} securities from {INPUT_FILE}")
+def _assert_not_shared_classified(path: Path) -> None:
+    _parsed_shared, classified_shared, _market_shared = shared_working_files()
+    if path.name == "classified_rows.json" or _resolved(path) == _resolved(classified_shared):
+        raise FundBuildError(
+            "Stamped import does not read data/classified_rows.json. "
+            "Pass a stamped classified_rows_{cik}_{period}.json."
+        )
 
-all_statuses = [record[f"{field}_status"] for record in results for field in FIELD_COLUMNS]
-pending = sum(1 for s in all_statuses if s == "PENDING_EXTERNAL_DATA")
-review = sum(1 for s in all_statuses if s == "REVIEW_MARKET_DATA")
-na = sum(1 for s in all_statuses if s == "NOT_APPLICABLE")
-passed = sum(1 for s in all_statuses if s == "PASS")
-corrected = sum(1 for s in all_statuses if s == "PASS_HUMAN_CORRECTED")
-print(f"  {passed} field values PASS")
-if corrected:
-    print(f"  {corrected} PASS_HUMAN_CORRECTED (Bloomberg value replaced by a recorded human correction)")
-print(f"  {pending} PENDING_EXTERNAL_DATA (Bloomberg error or blank -- no coverage or not yet refreshed)")
-print(f"  {review} REVIEW_MARKET_DATA (unexpected value -- needs a look)")
-print(f"  {na} NOT_APPLICABLE (warrant ADV, as expected)")
 
-if still_open:
-    print(f"\n{len(still_open)} field(s) need a decision:")
-    for r, field, exception_id, _ in still_open:
-        print(f"    {r['cusip']}  {r['issuer']:30s} {field:16s} [{exception_id}]")
-    print(f"\n  python resolution_log.py resolve <exception_id> APPROVE <reviewer> [note]")
-    print(f"  python resolution_log.py resolve <exception_id> ESCALATE <reviewer> [note]")
-    print(f"  python resolution_log.py resolve <exception_id> CORRECT <reviewer> <correction_value> [note]")
+def _assert_not_shared_output(path: Path, canonical: Path) -> None:
+    _parsed_shared, _classified_shared, market_shared = shared_working_files()
+    if path.name == "market_data.json" or _resolved(path) == _resolved(market_shared):
+        raise FundBuildError(
+            f"Stamped import refuses to write shared {market_shared}. "
+            f"Use {canonical.name}."
+        )
 
-if already_resolved_no_value:
-    print(f"\n{len(already_resolved_no_value)} field(s) previously reviewed (APPROVE/ESCALATE, no replacement value) -- not fresh flags:")
-    for r, field, exception_id, resolution in already_resolved_no_value:
-        print(f"    {r['cusip']}  {r['issuer']:30s} {field:16s} -- {resolution['decision']} by {resolution['reviewer']}")
 
-print(f"\nWrote {OUTPUT_FILE}")
+def load_stamped_classified(path: Path):
+    _assert_not_shared_classified(path)
+    if not path.exists():
+        raise FundBuildError(f"Classified file not found: {path}")
+    match = CLASSIFIED_NAME_RE.match(path.name)
+    if not match:
+        raise FundBuildError(
+            f"{path.name} is not a stamped classified_rows_{{cik|slug}}_"
+            f"{{period}}.json. Refusing to use it as a stamped classified file."
+        )
+    rows = load_json(path)
+    if not rows:
+        raise FundBuildError(f"{path}: classified file is empty")
+    cik = normalize_cik(rows[0].get("_source_cik"))
+    period = rows[0].get("_source_period_of_report")
+    if not period:
+        raise FundBuildError(
+            f"{path}: classified rows have no _source_period_of_report. "
+            "Refusing to guess the quarter."
+        )
+    period = parse_quarter(str(period))
+    validate_classified(rows, cik, period, path)
+
+    token, file_period = match.group(1), match.group(2)
+    if file_period != period:
+        raise FundBuildError(
+            f"{path}: filename period {file_period!r} does not match "
+            f"classified rows period {period!r}."
+        )
+    manager = resolve_manager(cik)
+    if token not in (manager.cik, manager.slug):
+        raise FundBuildError(
+            f"{path}: filename token {token!r} is not CIK {manager.cik} "
+            f"or slug {manager.slug!r}. Refusing to use another fund's file."
+        )
+    return rows, manager, period
+
+
+def validate_template_stamp(path: Path, cik: str, period: str) -> None:
+    match = TEMPLATE_NAME_RE.match(path.name)
+    if not match:
+        return
+    token, file_period = match.group(1), match.group(2)
+    try:
+        token_cik = normalize_cik(token)
+    except FundBuildError:
+        raise FundBuildError(
+            f"{path}: Bloomberg template stamp {token!r} is not a CIK. "
+            f"Expected bloomberg_template_{cik}_{period}.xlsx."
+        ) from None
+    if token_cik != cik or file_period != period:
+        raise FundBuildError(
+            f"{path}: template is CIK {token_cik} period {file_period}, "
+            f"not {cik} / {period}. Refusing to import another "
+            f"fund/quarter's workbook."
+        )
+
+
+def validate_output_path(output: Path, cik: str, period: str, canonical: Path) -> None:
+    _assert_not_shared_output(output, canonical)
+    match = MARKET_NAME_RE.match(output.name)
+    if not match:
+        raise FundBuildError(
+            f"{output}: output is not a stamped market_data_{{cik}}_"
+            f"{{period}}.json. Expected {canonical}."
+        )
+    token, file_period = match.group(1), match.group(2)
+    try:
+        token_cik = normalize_cik(token)
+    except FundBuildError:
+        token_cik = None
+    if token_cik != cik or file_period != period:
+        raise FundBuildError(
+            f"{output}: output stamp is {token!r} / {file_period}, not "
+            f"{cik} / {period}. Refusing to overwrite another "
+            f"fund/quarter snapshot."
+        )
+    if _resolved(output) != _resolved(canonical):
+        raise FundBuildError(
+            f"{output}: resolved path is not the canonical snapshot {canonical}."
+        )
+
+
+def finalize_and_write(results, fund_name, classified_rows, input_file, output_file):
+    quarter = derive_quarter_label(classified_rows)
+    still_open, already_resolved_no_value = apply_resolutions(
+        results, fund_name, quarter
+    )
+    write_market_json(output_file, results)
+    print_import_report(
+        results, input_file, output_file, still_open, already_resolved_no_value
+    )
+
+
+def run_legacy(input_file, fund_name):
+    results = read_workbook(input_file)
+    try:
+        with open("data/classified_rows.json") as f:
+            classified_rows = json.load(f)
+    except FileNotFoundError:
+        classified_rows = []
+    finalize_and_write(
+        results, fund_name, classified_rows, input_file, DEFAULT_OUTPUT_FILE
+    )
+
+
+def run_stamped(input_file, classified_path, output_arg, fund_arg):
+    classified_path = Path(classified_path)
+    input_path = Path(input_file)
+    rows, manager, period = load_stamped_classified(classified_path)
+    if not input_path.exists():
+        raise FundBuildError(f"Bloomberg workbook not found: {input_path}")
+    validate_template_stamp(input_path, manager.cik, period)
+
+    canonical = market_write_path(manager, period)
+    if output_arg:
+        output_path = Path(output_arg)
+        validate_output_path(output_path, manager.cik, period, canonical)
+    else:
+        output_path = canonical
+        _assert_not_shared_output(output_path, canonical)
+
+    results = read_workbook(str(input_path))
+    matched, dropped = filter_matched_market_records(results, rows, output_path)
+    if dropped:
+        print(
+            f"Quarter market snapshot {output_path} keeping "
+            f"{len(matched)} CUSIPs matching this filing; dropped "
+            f"{dropped} unmatched market-data row(s)."
+        )
+
+    fund_name = fund_arg if fund_arg else manager.slug
+    finalize_and_write(
+        matched, fund_name, rows, str(input_path), output_path
+    )
+    print(
+        "Shared working files were not used: classified_rows.json, "
+        "market_data.json."
+    )
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description=(
+            "Import a refreshed Bloomberg workbook into market-data JSON. "
+            "Stamped flag mode writes only data/market_data_{cik}_{period}.json. "
+            "Legacy positional mode still writes data/market_data.json."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Stamped import (PowerShell, one line):\n"
+            "  python scripts/import_bloomberg_data.py --input data/bloomberg_template_1856103_2026-06-30.xlsx --classified data/classified_rows_1856103_2026-06-30.json --output data/market_data_1856103_2026-06-30.json\n"
+            "\n"
+            "Legacy:\n"
+            "  python scripts/import_bloomberg_data.py bloomberg_template.xlsx pinnbrook"
+        ),
+    )
+    parser.add_argument(
+        "positional_input",
+        nargs="?",
+        help="Legacy: refreshed workbook (default bloomberg_template.xlsx)",
+    )
+    parser.add_argument(
+        "positional_fund",
+        nargs="?",
+        help="Legacy: fund name for exception IDs (default 'fund')",
+    )
+    parser.add_argument(
+        "--input",
+        dest="flag_input",
+        metavar="XLSX",
+        help="Refreshed Bloomberg workbook (stamped mode)",
+    )
+    parser.add_argument(
+        "--classified",
+        help="Stamped classified_rows_{cik}_{period}.json",
+    )
+    parser.add_argument(
+        "--output",
+        help=(
+            "Canonical market_data_{cik}_{period}.json. Derived from the "
+            "classified file when omitted."
+        ),
+    )
+    parser.add_argument(
+        "--fund",
+        dest="flag_fund",
+        metavar="NAME",
+        help="Exception-ID fund name (stamped default: registry slug)",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> None:
+    args = parse_args(argv)
+    stamped = any(
+        value is not None
+        for value in (args.flag_input, args.classified, args.output, args.flag_fund)
+    )
+    try:
+        with _scripts_cwd():
+            if stamped:
+                if args.positional_input is not None or args.positional_fund is not None:
+                    raise FundBuildError(
+                        "Do not mix legacy positional arguments with "
+                        "--input / --classified / --output / --fund."
+                    )
+                if not args.flag_input or not args.classified:
+                    raise FundBuildError(
+                        "Stamped import requires --input and --classified. "
+                        "--output is optional and is derived when omitted."
+                    )
+                run_stamped(
+                    args.flag_input,
+                    args.classified,
+                    args.output,
+                    args.flag_fund,
+                )
+            else:
+                input_file = args.positional_input or DEFAULT_INPUT_FILE
+                fund_name = args.positional_fund or DEFAULT_FUND_NAME
+                run_legacy(input_file, fund_name)
+    except FundBuildError as exc:
+        _die(str(exc))
+
+
+if __name__ == "__main__":
+    main()
