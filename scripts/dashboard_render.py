@@ -1,110 +1,249 @@
 CSS = """
 :root{
-  --bg:#0d1117;--panel:#161b22;--p2:#1c2129;--line:#2d333b;--txt:#e6edf3;
-  --dim:#8b949e;--d2:#6e7681;--blue:#58a6ff;--blue-dim:#1b3a5c;
-  --grn:#3fb950;--amb:#d29922;--red:#f85149;--red2:#ff9d96;--pur:#bc8cff;
-  --font:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --mono:"IBM Plex Mono","SF Mono","Consolas",monospace;
+  --bg:#0D1117;--panel:#161B22;--raised:#1C232D;--line:#303945;--txt:#E6EDF3;
+  --dim:#A0ACBA;--blue:#66B0FF;--hover:#202B38;--selected:#182D43;
+  --review:#E9B85B;--review-bg:#30291D;--crit:#FF8C87;--crit-bg:#362326;
+  --der:#C7A4F8;--der-bg:#29243A;
+  --font:"Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:Consolas,"SF Mono","Cascadia Mono",ui-monospace,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:13px;line-height:1.45;padding:18px}
-.wrap{max-width:1720px;margin:0 auto}
-.num{font-variant-numeric:tabular-nums}
-h1{font-size:19px;font-weight:600}
-header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
-.sub{color:var(--dim);font-size:12px}
-.tag{background:rgba(63,185,80,.13);color:var(--grn);font-size:10px;padding:2px 7px;border-radius:3px;border:1px solid rgba(63,185,80,.3);font-weight:600;letter-spacing:.4px}
-.tag.warn{background:rgba(210,153,34,.13);color:var(--amb);border-color:rgba(210,153,34,.35)}
-.tag.fail{background:rgba(248,81,73,.13);color:var(--red);border-color:rgba(248,81,73,.35)}
+html,body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:13px;line-height:20px}
+body.drawer-open{overflow:hidden}
+button,input{font-family:inherit}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1552px;margin:0 auto;padding:20px 24px 48px}
+.inert{pointer-events:none;user-select:none}
 
-.tabbar{display:flex;gap:2px;margin:16px 0 0;border-bottom:1px solid var(--line)}
-.tabbtn{padding:9px 16px;color:var(--dim);font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;user-select:none}
+.hdr{display:flex;align-items:center;gap:16px;flex-wrap:wrap;min-height:28px}
+.hdr h1{font-size:20px;line-height:28px;font-weight:600}
+.hdr-meta{color:var(--dim);font-size:12px;line-height:20px}
+.hdr-right{margin-left:auto;display:flex;align-items:center}
+.filed-line{color:var(--dim);font-size:12px;line-height:20px;margin-top:6px}
+
+.tabbar{display:flex;gap:8px;margin-top:16px;border-bottom:1px solid var(--line);height:40px;align-items:stretch}
+.tabbtn{background:none;border:0;color:var(--dim);font-size:13px;line-height:20px;font-weight:400;padding:8px 4px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tabbtn:hover{color:var(--txt)}
-.tabbtn.on{color:var(--blue);border-bottom-color:var(--blue)}
-.tabpanel{display:none;padding-top:16px}
+.tabbtn.on{color:var(--blue);font-weight:600;border-bottom-color:var(--blue)}
+.tabpanel{display:none;padding-top:24px}
 .tabpanel.on{display:block}
 
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px;margin:16px 0}
-.stats.hero{grid-template-columns:minmax(220px,1.4fr) minmax(200px,1.2fr) repeat(auto-fit,minmax(140px,1fr))}
-.st{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:11px 13px}
-.st.hero{border-color:rgba(88,166,255,.35)}
-.st .l{font-size:11px;color:var(--d2);text-transform:uppercase;letter-spacing:.15px;margin-bottom:4px;line-height:1.3;white-space:normal}
-.st .v{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
-.st.hero .v{font-size:22px}
-.st .n{font-size:10px;color:var(--dim);margin-top:2px}
+.tiles-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tile{display:grid;grid-template-columns:minmax(0,1fr) 14px;grid-template-rows:16px auto 1fr;column-gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;height:108px;padding:14px 16px 12px;text-align:left;color:inherit;width:100%;cursor:pointer;min-width:0}
+.tile.compact{height:104px;padding:12px 16px}
+.tile:hover{background:var(--hover)}
+.tile-label{grid-column:1;grid-row:1;font-size:12px;line-height:16px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tile-value{grid-column:1 / -1;grid-row:2;font-size:24px;line-height:30px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:10px;white-space:nowrap;overflow:visible;min-width:0}
+.tile.compact .tile-value{font-size:20px;line-height:26px;margin-top:8px}
+.tile-qual{grid-column:1 / -1;grid-row:3;align-self:end;font-size:11px;line-height:16px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .info{grid-column:2;grid-row:1;position:static;width:14px;height:14px;margin-top:1px;border:1px solid var(--dim);border-radius:50%;font-size:9px;line-height:12px;text-align:center;color:var(--dim);flex:0 0 auto}
+.review-val{color:var(--review)}
+.crit-val{color:var(--crit)}
+.opt{color:var(--der)}
+.z{color:var(--dim)}
 
-.ctrl{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:13px 15px;margin:14px 0;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
-.ctrl label{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:8px}
-.ctrl-note{font-size:11px;color:var(--d2)}
-button{background:var(--p2);color:var(--txt);border:1px solid var(--line);padding:6px 12px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit}
-button:hover{border-color:var(--blue);color:var(--blue)}
-button.on{border-color:var(--blue);color:var(--blue);background:rgba(88,166,255,.1)}
+.band{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--panel);border:1px solid var(--line);border-radius:4px;min-height:80px;margin-bottom:16px;align-items:stretch}
+.band-cell{position:relative;display:flex;flex-direction:column;justify-content:center;padding:12px 16px;min-width:0}
+.band-cell + .band-cell::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:1px;background:var(--line)}
+.band-label{font-size:12px;line-height:16px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.band-value{font-size:22px;line-height:28px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:8px;white-space:nowrap}
 
-h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;color:var(--dim);margin:22px 0 9px;font-weight:600}
-h2:first-child{margin-top:0}
+.split-60{display:grid;grid-template-columns:minmax(0,826fr) minmax(0,550fr);gap:16px;align-items:start;margin-top:16px}
+.split-65{display:grid;grid-template-columns:minmax(0,65fr) minmax(0,35fr);gap:16px;align-items:start}
+.split-map{display:grid;grid-template-columns:minmax(0,826fr) minmax(0,550fr);gap:16px;align-items:start;margin-top:16px}
 
-.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:16px}
-.card-head{padding:11px 15px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
-.card-title{font-size:12.5px;font-weight:600}
-.card-note{color:var(--d2);font-size:11px}
-.card-body{padding:15px}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media (max-width:900px){.two-col{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;min-width:0}
+.panel-h{height:44px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.panel-title{font-size:13px;line-height:20px;font-weight:600}
+.panel-note{font-size:11px;line-height:16px;color:var(--dim)}
+.toolbar{height:48px;padding:0 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.panel-foot{min-height:32px;padding:8px 16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;color:var(--dim);font-size:11px;line-height:16px}
 
-table{width:100%;border-collapse:collapse}
-th{background:var(--p2);padding:8px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--line)}
-th:hover{color:var(--blue)} th.sorted{color:var(--blue)}
-th.l,td.l{text-align:left}
-td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(45,51,59,.5);font-variant-numeric:tabular-nums;white-space:nowrap}
-tbody tr:hover{background:rgba(88,166,255,.05)}
+.table-clip{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.table-clip.ov{max-height:none}
+.table-clip.exp{height:432px}
+.table-clip.chg{height:416px}
+.table-clip.pos{height:352px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+.exp-table{min-width:862px}
+.chg-table{min-width:1360px}
+.pos-table{min-width:1360px}
+th,td{padding:0 8px;white-space:nowrap;font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;z-index:1;height:32px;background:var(--raised);text-align:right;font-size:11px;line-height:16px;font-weight:400;color:var(--dim);cursor:pointer;user-select:none;border-bottom:1px solid var(--line)}
+th.l,td.l{text-align:left;overflow:hidden}
+th.sorted{color:var(--blue);box-shadow:inset 0 -2px 0 var(--blue)}
+td{height:32px;text-align:right;border-bottom:1px solid var(--line);font-size:12px;line-height:18px}
+.ov-table td{height:34px}
+.exp-table td{height:40px}
+tbody tr:hover{background:var(--hover)}
 tr.clickable{cursor:pointer}
-.issuer{font-weight:600;color:var(--blue)}
-.opt{color:var(--pur)} .z{color:var(--d2)}
-.badge{padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600}
-.bg{background:rgba(63,185,80,.14);color:var(--grn)}
-.ba{background:rgba(210,153,34,.14);color:var(--amb)}
-.br{background:rgba(248,81,73,.14);color:var(--red)}
-.bx{background:rgba(248,81,73,.3);color:var(--red2)}
-.bp{background:rgba(188,140,255,.14);color:var(--pur)}
-.up{color:var(--grn)}.dn{color:var(--red)}
-.row-crit{border-left:2px solid var(--red)}
-.row-warn{border-left:2px solid var(--amb)}
+tr.sel{background:var(--selected)}
+tr.row-review td:first-child{box-shadow:inset 2px 0 0 var(--review)}
+tr.row-crit td:first-child{box-shadow:inset 2px 0 0 var(--crit)}
+.sec{display:flex;gap:8px;min-width:0;align-items:baseline}
+.tk{flex:0 0 auto;font-weight:600;color:var(--txt)}
+.nm{min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.inst{color:var(--dim);font-weight:400;font-size:11px}
+.linkish{color:var(--blue);cursor:pointer;background:none;border:0;font:inherit;color:var(--blue)}
 
-.stat-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
-.stat-row:last-child{border-bottom:none}
+.attn-row{display:grid;grid-template-columns:minmax(0,1fr) auto 16px;column-gap:12px;min-height:64px;height:64px;padding:11px 16px 10px;width:100%;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;border-top:1px solid var(--line)}
+.attn-row:first-of-type{border-top:0}
+.attn-row:hover{background:var(--hover)}
+.attn-cat{font-size:13px;line-height:20px;font-weight:600}
+.attn-ex{font-size:12px;line-height:18px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.attn-count{font-size:13px;line-height:20px;font-weight:600;font-variant-numeric:tabular-nums;grid-row:1;grid-column:2;align-self:start}
+.attn-chev{grid-row:1;grid-column:3;color:var(--dim);align-self:start;padding-top:1px}
+
+.ctrl-row{display:flex;align-items:center;gap:0;flex-wrap:wrap;height:auto;min-height:32px;margin-bottom:16px}
+.ctrl-group{display:flex;align-items:center;gap:8px}
+.ctrl-group + .ctrl-group{margin-left:20px;padding-left:20px;border-left:1px solid var(--line)}
+.ctrl-label{font-size:12px;line-height:18px;color:var(--dim)}
+.ctrl-spacer{flex:1}
+
+.search{height:32px;padding:0 12px;background:var(--bg);border:1px solid var(--line);border-radius:3px;color:var(--txt);font-size:12px;line-height:18px;width:320px;max-width:100%}
+.search.exp{width:300px}
+.seg{height:32px;padding:0 12px;border-radius:3px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-size:12px;line-height:18px;cursor:pointer}
+.seg:hover{background:var(--hover)}
+.seg.on{background:var(--selected);color:var(--blue);border-color:var(--blue);font-weight:600}
+.seg.adv{width:46px;padding:0;text-align:center}
+.seg.win{width:56px;padding:0;text-align:center}
+.seg.view-a{width:90px}
+.seg.view-b{width:130px}
+.seg.basis-a{width:92px;padding:0}
+.seg.basis-b{width:138px;padding:0}
+.quiet{background:none;border:0;color:var(--dim);font-size:12px;line-height:18px;cursor:pointer;padding:0}
+.quiet:hover{color:var(--txt)}
+.more-wrap{position:relative}
+.menu{position:absolute;top:36px;left:0;z-index:8;background:var(--raised);border:1px solid var(--line);border-radius:4px;min-width:220px;padding:6px 0}
+.menu.right{left:auto;right:0}
+.menu-item,.menu label{display:block;width:100%;text-align:left;background:none;border:0;color:var(--txt);font-size:12px;line-height:18px;padding:7px 12px;cursor:pointer}
+.menu-item:hover,.menu label:hover{background:var(--hover)}
+.menu .z{padding:7px 12px}
+
+.badge{display:inline-block;height:20px;padding:0 6px;border-radius:3px;font-size:11px;line-height:20px;font-weight:400;white-space:nowrap}
+.badge.neutral{background:var(--raised);color:var(--dim)}
+.badge.review{background:var(--review-bg);color:var(--review)}
+.badge.crit{background:var(--crit-bg);color:var(--crit)}
+.badge.der{background:var(--der-bg);color:var(--der)}
+
+.plain-line{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:32px;color:var(--dim);font-size:12px;line-height:18px;margin-top:16px}
+.disc{display:flex;align-items:center;gap:8px;width:100%;height:36px;padding:0 8px 0 8px;border:0;border-top:1px solid var(--line);background:transparent;color:inherit;text-align:left;cursor:pointer;margin-top:16px}
+.disc-chev{width:12px;color:var(--dim);flex:0 0 auto}
+.disc[aria-expanded="true"] .disc-chev{transform:rotate(90deg)}
+.disc-label{font-size:13px;line-height:20px}
+.disc-meta{margin-left:auto;color:var(--dim);font-size:12px;line-height:18px}
+.disc-body{padding:12px 16px 8px}
+.gics-block{padding:8px 0 0;color:var(--dim);font-size:12px;line-height:18px}
+
+.hedge-ratio{font-size:28px;line-height:34px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;padding:12px 16px 8px}
+.stat-row{display:flex;justify-content:space-between;gap:12px;min-height:32px;align-items:center;padding:0 16px;font-size:12px;line-height:18px}
 .stat-label{color:var(--dim)}
 .stat-value{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.hedge-bar-track{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-top:8px;display:flex}
-.hedge-bar-fill{height:100%;background:var(--blue)}
-.hedge-bar-over{height:100%;background:var(--red)}
+.thin{height:1px;background:var(--line);margin:8px 16px}
+.const-row{display:flex;align-items:baseline;gap:8px;min-height:36px;padding:0 16px}
+.hedge-foot{padding:10px 16px 16px;color:var(--dim);font-size:11px;line-height:16px}
+.none-line{color:var(--dim);font-size:12px;line-height:18px;margin-top:12px;padding:4px 0 0}
 
-.table-controls{display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
-.search-input{font-family:var(--font);font-size:13px;background:var(--bg);border:1px solid var(--line);color:var(--txt);padding:6px 10px;border-radius:3px;flex:1;min-width:160px}
-.search-input:focus{outline:none;border-color:var(--blue)}
-.filter-chip{font-size:12px;padding:5px 11px;border:1px solid var(--line);border-radius:3px;color:var(--dim);cursor:pointer}
-.filter-chip.on{border-color:var(--blue);color:var(--blue);background:rgba(88,166,255,.08)}
+.rank-panel{margin-top:16px}
+.rank-body{padding:8px 16px 14px}
+.rank-row{display:grid;grid-template-columns:200px minmax(160px,1fr) 68px 84px;column-gap:10px;align-items:center;min-height:40px;width:100%}
+.rank-row.delta{grid-template-columns:200px minmax(160px,1fr) 96px}
+button.rank-row{border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:3px;padding:0 4px;margin:0 -4px}
+button.rank-row:hover{background:var(--hover)}
+button.rank-row.on{background:var(--selected)}
+.rank-name{font-size:12px;line-height:18px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rank-track{position:relative;display:block;height:16px;background:var(--raised);border-radius:2px;overflow:hidden}
+.rank-fill{display:block;height:100%;background:var(--blue);opacity:.88;border-radius:2px}
+.rank-fill.dim{background:var(--dim);opacity:.4}
+.rank-track.delta-track{overflow:hidden}
+.rank-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line);z-index:1}
+.rank-fill.pos{position:absolute;left:50%;top:0;bottom:0;opacity:.88;border-radius:0 2px 2px 0}
+.rank-fill.neg{position:absolute;right:50%;top:0;bottom:0;background:var(--dim);opacity:.7;border-radius:2px 0 0 2px}
+.rank-pct,.rank-usd{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;line-height:18px;text-align:right;white-space:nowrap}
+.rank-pct{color:var(--txt);font-weight:600}
+.rank-usd{color:var(--dim)}
+.rank-row.muted .rank-name,.rank-row.muted .rank-pct{color:var(--dim);font-weight:400}
+.rank-note{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);color:var(--dim);font-size:11px;line-height:16px}
+.rank-clear{margin:4px 0 8px}
 
+.view-row{display:flex;align-items:center;gap:8px;height:32px;margin:16px 0}
+.view-toggle{display:inline-flex;align-items:stretch}
+.view-toggle .seg{margin:0}
+.view-toggle .seg + .seg{margin-left:-1px}
+.view-toggle .seg:first-child{border-radius:3px 0 0 3px}
+.view-toggle .seg:last-child{border-radius:0 3px 3px 0}
 .chartwrap{position:relative}
-.axislabel{fill:var(--d2);font-size:10px;font-family:var(--mono)}
+.chart-curve{height:158px}
+.chart-matrix{height:220px}
+.axislabel{fill:var(--dim);font-size:11px;font-family:var(--mono)}
 .gridline{stroke:var(--line);stroke-width:1}
 .curveline{fill:none;stroke:var(--blue);stroke-width:2}
-.curveline.alt{stroke:var(--amb)}
-.curvefill{fill:rgba(88,166,255,.10)}
-.curvegap{fill:rgba(248,81,73,.10)}
+.curveline.alt{stroke:var(--dim);stroke-dasharray:5 4}
+.curvefill{fill:rgba(102,176,255,.10)}
+.curvegap{fill:rgba(160,172,186,.12)}
 .scatterdot{cursor:pointer}
-.tooltip{position:absolute;background:var(--p2);border:1px solid var(--line);border-radius:4px;padding:7px 10px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .1s;z-index:10;max-width:260px}
-.tooltip.show{opacity:1}
+.chart-tip{position:absolute;background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:7px 10px;font-size:12px;pointer-events:none;opacity:0;z-index:10;max-width:260px}
+.chart-tip.show{opacity:1}
+.legend{font-size:11px;line-height:16px;color:var(--dim);display:flex;gap:16px;align-items:center}
+.swatch{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
 
-.section-note{color:var(--dim);font-size:11px;padding:10px 15px;border-top:1px solid var(--line);background:rgba(255,255,255,.015);line-height:1.6}
-.inbox-cat{margin-bottom:14px}
-.inbox-cat h3{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--d2);margin-bottom:6px}
-.inbox-row{padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer}
-.inbox-row:hover{background:rgba(88,166,255,.04)}
-.inbox-rule{font-size:11px;color:var(--dim)}
-.detail-close{float:right}
-.clickable-name{cursor:pointer}
-.matrix-legend{font-size:11px;color:var(--dim);margin-top:8px}
-footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);color:var(--d2);font-size:10.5px;line-height:1.7}
+.help{position:fixed;z-index:80;width:344px;max-width:calc(100vw - 24px);background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:12px;box-shadow:none;pointer-events:auto}
+.help-title{font-size:13px;line-height:20px;font-weight:600}
+.help-body{font-size:12px;line-height:19px;margin-top:8px;color:var(--txt);overflow-wrap:break-word}
+.help-qual{font-size:11px;line-height:16px;color:var(--dim);margin-top:8px}
+
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:50;display:flex;flex-direction:column}
+.drawer-h{min-height:88px;padding:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex:0 0 auto}
+.drawer-title{font-size:18px;line-height:26px;font-weight:600}
+.drawer-sub{font-size:12px;line-height:20px;color:var(--dim);margin-top:2px}
+.drawer-close{height:32px;width:44px;border:0;background:none;color:var(--dim);cursor:pointer;font-size:13px;flex:0 0 auto;margin-top:-4px}
+.drawer-close:hover{color:var(--txt)}
+.drawer-b{flex:1;overflow:auto;padding:0 24px 24px}
+.d-row{display:flex;justify-content:space-between;align-items:center;gap:12px;height:40px;border-bottom:1px solid var(--line);font-size:12px;line-height:18px}
+.d-row .v{font-family:var(--mono);font-size:14px;line-height:20px;font-variant-numeric:tabular-nums}
+.d-sec{font-size:13px;line-height:20px;font-weight:600;margin:16px 0 8px}
+
+.empty{height:96px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:var(--dim);font-size:12px}
+
+.bucket-head,.bucket-row{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px;column-gap:12px;align-items:center;min-height:32px}
+.bucket-head{color:var(--dim);font-size:11px;line-height:16px}
+.bucket-head span:not(:first-child),.bucket-row span:not(:first-child){text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.bucket-row{font-size:12px;line-height:18px;border-top:1px solid var(--line)}
+.bucket-row .bucket-lab{color:var(--dim)}
+
+footer{margin-top:40px;padding-top:12px;border-top:1px solid var(--line);color:var(--dim);font-size:11px;line-height:16px}
+.foot-line{display:flex;justify-content:flex-start;align-items:baseline;gap:0;flex-wrap:wrap;min-height:20px}
+.foot-body{margin-top:12px;line-height:18px}
+.foot-body p{margin:0 0 8px}
+.foot-body p:last-child{margin-bottom:0}
+
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+@media (min-width:1280px){
+  .split-65 > .panel:first-child{position:relative;z-index:2}
+  .split-65 .menu.right{left:100%;right:auto;margin-left:20px}
+}
+@media (max-width:1279px){
+  .split-60,.split-65,.split-map{grid-template-columns:1fr}
+  .exp-side{order:-1}
+}
+@media (max-width:1099px){
+  .tiles-4{grid-template-columns:1fr 1fr}
+  .band{grid-template-columns:1fr 1fr;height:auto}
+  .band-cell{min-height:80px}
+  .rank-row{grid-template-columns:minmax(140px,180px) minmax(96px,1fr) 64px 76px}
+  .rank-row.delta{grid-template-columns:minmax(140px,180px) minmax(96px,1fr) 88px}
+}
+@media (max-width:699px){
+  .tiles-4,.band{grid-template-columns:1fr}
+  .search,.search.exp{width:100%}
+  .ctrl-group + .ctrl-group{margin-left:0;padding-left:0;border-left:0;margin-top:8px}
+  .rank-row,.rank-row.delta{grid-template-columns:1fr auto;row-gap:6px;padding-top:8px;padding-bottom:8px}
+  .rank-name{grid-column:1 / -1}
+  .rank-track{grid-column:1 / -1}
+}
 """
 
 JS = r"""
@@ -121,386 +260,655 @@ const state = {
   chgFilter: 'all',
   expSortKey: 'trueLongExposure',
   expSortDir: -1,
-  chgSortKey: 'dollarChange',
+  chgSortKey: 'absDollarChange',
   chgSortDir: -1,
   sectorLevel: 'industry',
   curveWindow: '20d',
   selectedIndustry: null,
   detail: null,
+  liqView: 'blotter',
+  more: null,
+  expCols: { overlay: false, gics: false },
+  posCols: { shares: false, verified: false, adv: false, so: false, gics: false, qoq: false },
+  open: { histOv: false, histChg: false, gicsOv: false, gicsChg: false, industry: false, excl: false, sectorH: false, rot: false, dLiq: false, dHist: false, dSrc: false, dFam: false, allIdx: false, method: false },
+  origin: null,
+  _pendingRestore: null,
+  detailJustOpened: false,
+  selectedKey: null,
+  _scroll: {},
+  _win: [0, 0],
 };
+
+const HELP = {
+  totalExposure: {
+    title: 'Total Exposure',
+    body: 'Filed common/long-class value + call notional \u2212 put notional for positions included in the exposure book. Hedge instruments excluded by the current methodology are shown separately. Option notional is not delta-adjusted.',
+  },
+  indexHedge: {
+    title: 'Index Hedge',
+    body: 'Broad-market index put notional \u00f7 the model\u2019s long-book exposure. Sector/other hedges are excluded. Above 100% means put notional exceeds the denominator; it does not establish a delta-neutral portfolio.',
+  },
+  top10: {
+    title: 'Top 10 Concentration',
+    body: 'Share of the exposure book represented by its ten largest exposures using the current model\u2019s ranking and denominator. Individual position weights elsewhere use Common Book.',
+  },
+  compounding: {
+    title: 'Compounding Illiquidity',
+    body: 'At least 20 trading days to exit at the selected participation and basis, with 20-day ADV below 3-month ADV.\nA slow exit alongside declining volume. Requires valid inputs for both windows.',
+  },
+  filedDelta: {
+    title: 'Filed \u0394$',
+    body: 'Change in filed / quarter-end value. This mixes marks and activity and is not executed trading cash flow. Share-count status is the activity taxonomy.',
+  },
+  callOverlay: {
+    title: 'Call Overlay',
+    body: 'Call notional \u00f7 filed common value for the same exposure. Not delta-adjusted; unavailable when there is no common-value denominator.',
+  },
+  dtl: {
+    title: 'Days to Liquidate',
+    body: 'Modeled position shares \u00f7 (share ADV \u00d7 participation), using the selected window and basis. A single-leg estimate; options and warrants have no standalone ADV liquidation estimate.',
+  },
+  pctCommon: {
+    title: '% Common Book',
+    body: 'Filed common/long-class value \u00f7 total filed Common Book. Call notional and Bloomberg revaluation do not enter this weight.',
+  },
+  ownership: {
+    title: 'Ownership / Threshold Review',
+    body: 'The model\u2019s configured ownership-proximity bands using eligible holdings and shares outstanding. Open details for the exact band and inputs. Proximity is a review signal, not a legal determination.',
+  },
+  gics: {
+    title: 'GICS coverage',
+    body: 'Industry rotation requires the existing 80% usable-coverage gate for both comparison quarters using each quarter\u2019s own classification data. Current classifications are not copied backward.',
+  },
+  concIlliquid: {
+    title: 'Concentrated + Illiquid',
+    body: 'Positions with an existing ownership-threshold proximity flag and compounding illiquidity. This refers to ownership concentration, not simply a large portfolio weight.',
+  },
+  coverage: {
+    title: 'Coverage',
+    body: 'ADV-modeled instrument records over modeled plus excluded instrument records for this model scope. Exclusions are methodology or data-availability outcomes, not a coverage percentage of Common Book.',
+  },
+  modeledBook: {
+    title: 'ADV-Modeled Book',
+    body: 'Verified market value of instruments included in the ADV liquidity model at the selected participation and basis. Options and warrants are excluded from this book.',
+  },
+  slowest: {
+    title: 'Slowest Modeled Exit',
+    body: 'The largest resolved 20-day days-to-liquidate among ADV-modeled instruments at the selected participation and basis. Not a materiality screen.',
+  },
+  integrity: {
+    title: 'Integrity',
+    body: 'Derived from integrity.py checks on this filing. Check 1 stays pending without a third-party total. Duplicate groups, if any, remain review items and are not auto-deduped.',
+  },
+};
+
+let helpTimer = null;
+let helpCloseTimer = null;
+let helpAnchor = null;
 
 function fmtUSD(v, compact) {
   if (v === null || v === undefined) return '\u2014';
+  const sign = v < 0 ? '\u2212' : '';
+  const abs = Math.abs(v);
   if (compact) {
-    const abs = Math.abs(v);
-    if (abs >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
-    if (abs >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
-    if (abs >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
+    if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(2) + 'B';
+    if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(1) + 'M';
+    if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(0) + 'K';
   }
-  return '$' + v.toLocaleString(undefined, {maximumFractionDigits: 0});
+  return sign + '$' + abs.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
-function fmtPct(v, dp) { return v === null || v === undefined ? '\u2014' : v.toFixed(dp === undefined ? 1 : dp) + '%'; }
-function fmtDays(v) { return v === null || v === undefined ? '\u2014' : (v < 1 ? '<1' : v.toFixed(1)) + 'd'; }
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-function daysBadgeClass(d) { return d===null||d===undefined ? '' : d<1?'bg':d<5?'bg':d<10?'ba':d<20?'br':'bx'; }
+function fmtSignedUSD(v, compact) {
+  if (v === null || v === undefined) return '\u2014';
+  const n = fmtUSD(v, compact);
+  return v > 0 ? '+' + n : n;
+}
+function fmtPct(v, dp) {
+  return v === null || v === undefined ? '\u2014' : v.toFixed(dp === undefined ? 1 : dp) + '%';
+}
+function fmtSignedPct(v) {
+  if (v === null || v === undefined) return '\u2014';
+  const n = v.toFixed(1) + '%';
+  return v > 0 ? '+' + n : (v < 0 ? n.replace('-', '\u2212') : n);
+}
+function fmtDays(v) {
+  return v === null || v === undefined ? '\u2014' : (v < 1 ? '<1' : v.toFixed(1)) + 'd';
+}
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
 function currentRateData() { return DATA.byBasis[state.basis][state.rate]; }
-function naCell() { return '<span class="z" title="Excluded from ADV liquidity model">n/a</span>'; }
-function integrityTag() {
-  const integ = DATA.integrity || {};
-  const st = integ.status || 'Unknown';
-  const dups = integ.duplicateGroupCount || 0;
-  const extra = dups ? ` \u00b7 ${dups} duplicate group${dups === 1 ? '' : 's'}` : '';
-  const cls = st === 'FAIL' ? 'fail' : 'warn';
-  return `<span class="tag ${cls}" title="Derived from integrity.py checks on this filing. Check 1 is pending without a third-party total.">${esc(st)}${esc(extra)}</span>`;
-}
+function ratePct() { return (parseFloat(state.rate) * 100).toFixed(0); }
+function basisLabel() { return state.basis === 'common_plus_calls' ? 'Common + calls' : 'Common'; }
+function assumptionLabel() { return '@ ' + ratePct() + '% ADV \u00b7 ' + basisLabel(); }
 function isDerivativeLeg(cls) {
   const c = (cls || '').toUpperCase();
   return c === 'WARRANT' || c.includes('CALL') || c.includes('PUT');
 }
-function gicsReconNotes(g, extra) {
-  const bits = [];
-  if (g.excludedPriorTrueLong) bits.push(fmtUSD(g.excludedPriorTrueLong, true) + ' of prior-quarter true-long has no usable quarter-specific GICS \u2014 excluded from rotation.');
-  if (g.excludedCurrentTrueLong) bits.push(fmtUSD(g.excludedCurrentTrueLong, true) + ' of current-quarter true-long has no usable quarter-specific GICS \u2014 excluded from rotation.');
-  if (extra) bits.push(extra);
-  return bits.length ? `<div class="section-note">${bits.join(' ')}</div>` : '';
+function instrumentShort(cls) {
+  const c = (cls || '').toUpperCase();
+  if (c.includes('PUT')) return 'puts';
+  if (c.includes('CALL')) return 'call';
+  if (c === 'WARRANT') return 'warrant';
+  return '';
 }
-function statusBadge(status) {
-  const colors = { NEW: 'var(--blue)', CLOSED: 'var(--d2)', INCREASED: 'var(--txt)', DECREASED: 'var(--txt)', UNCHANGED: 'var(--d2)', 'RE-ENTERED': 'var(--pur)' };
-  return `<span class="num" style="color:${colors[status] || 'var(--dim)'}">${esc(status || '')}</span>`;
+function classLabel(cls) {
+  return (cls || '').replace(/_/g, ' ');
 }
-function qoqCells(qoq) {
-  if (!qoq) return '<td class="z">\u2014</td><td class="num z">\u2014</td>';
-  const delta = qoq.sharesChangePct !== null && qoq.sharesChangePct !== undefined ? (qoq.sharesChangePct > 0 ? '+' : '') + qoq.sharesChangePct.toFixed(1) + '%' : '\u2014';
-  return `<td>${statusBadge(qoq.status)}</td><td class="num">${delta}</td>`;
+function dash() { return '<span class="z">\u2014</span>'; }
+function money(v, compact, cls) {
+  if (v === null || v === undefined) return dash();
+  const klass = cls || (v === 0 ? 'z' : '');
+  return '<span class="mono' + (klass ? ' ' + klass : '') + '">' + fmtUSD(v, compact) + '</span>';
 }
-function commonBookCell(e) {
-  if (e.isCallOnly) return '<span class="badge bp">Options-only</span>';
-  const pct = fmtPct(e.pctOfCommonBook, 2);
-  const overlay = e.optionToCommonRatioPct ? ` <span class="opt">\u00b7 Call Overlay ${e.optionToCommonRatioPct.toFixed(0)}% of Common</span>` : '';
-  return `${pct} of Common Book${overlay}`;
+function callMoney(v) {
+  if (v === null || v === undefined) return dash();
+  return money(v, true, v ? 'opt' : 'z');
 }
-function findCompany(issuerOrKey) {
-  const q = (issuerOrKey || '').toUpperCase().replace(/[.,]/g,'').replace(/\s+/g,' ').trim();
-  return (DATA.companies || []).find(c => c.issuerKey === q || (c.issuer || '').toUpperCase().replace(/[.,]/g,'').replace(/\s+/g,' ').trim() === q);
+function quarterLabel(period) {
+  const map = { '03': 'Q1', '06': 'Q2', '09': 'Q3', '12': 'Q4' };
+  const p = (period || '').split('-');
+  if (p.length === 3 && map[p[1]]) return map[p[1]] + ' ' + p[0];
+  return period || '';
 }
-function openCompany(issuerKey) {
-  const c = findCompany(issuerKey);
-  if (!c) return;
-  if (c.instrumentCount === 1) {
-    const inst = c.instruments[0];
-    openLeg(inst.cusip, inst.instrumentClass);
-    return;
-  }
-  state.detail = { kind: 'company', issuerKey: c.issuerKey };
-  render();
+function fmtDate(iso) {
+  if (!iso) return '\u2014';
+  const [y, m, d] = iso.split('-').map(Number);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (!m || !d) return iso;
+  return d + ' ' + months[m - 1] + ' ' + y;
 }
-function openLeg(cusip, instrumentClass) {
-  state.detail = { kind: 'leg', cusip, instrumentClass };
-  render();
+function sid(cusip, cls) { return (cusip || '') + '|' + (cls || ''); }
+function tickerFor(cusip) {
+  const e = (DATA.exposures || []).find(x => x.cusip === cusip);
+  if (e && e.ticker) return e.ticker;
+  const ch = (DATA.changesBlotter || []).find(x => x.cusip === cusip);
+  return (ch && ch.ticker) || '';
 }
-function exclusionFor(cusip, instrumentClass) {
-  const r = currentRateData();
-  return (r.excluded || []).find(e => e.cusip === cusip && e.instrumentClass === instrumentClass) || null;
+function liveCompounding() {
+  return (currentRateData().liquidity || []).filter(p => p.compoundingIlliquidity);
 }
-function closeDetail() { state.detail = null; render(); }
-function goTab(tab, extra) {
-  state.tab = tab;
-  if (extra) Object.assign(state, extra);
-  render();
+function liveConc() {
+  return (currentRateData().liquidity || []).filter(p => p.concentratedAndIlliquid);
+}
+function reenteredSet() {
+  const set = new Set();
+  (currentRateData().liquidity || []).forEach(p => {
+    if (p.reenteredAfterClose) set.add(sid(p.cusip, p.instrumentClass));
+  });
+  return set;
+}
+function sortMark(active) { return active ? ' \u25be' : ''; }
+
+function integrityTag() {
+  const integ = DATA.integrity || {};
+  const st = integ.status || 'Unknown';
+  let label = st;
+  if (st === 'PASS WITH REVIEW/PENDING ITEMS') label = 'PASS \u00b7 review / pending';
+  const cls = st === 'FAIL' ? 'crit' : 'review';
+  return '<span class="badge ' + cls + '" data-help="integrity" tabindex="0">' + esc(label) + '</span>';
 }
 
-function render() {
-  const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="wrap">
-    ${renderHeader()}
-    ${renderTabs()}
-    ${state.tab==='liq' || state.tab==='pos' ? renderControls() : ''}
-    ${renderDetail()}
-    <div class="tabpanel ${state.tab==='overview'?'on':''}">${renderOverview()}</div>
-    <div class="tabpanel ${state.tab==='changes'?'on':''}">${renderChanges()}</div>
-    <div class="tabpanel ${state.tab==='exp'?'on':''}">${renderExposure()}</div>
-    <div class="tabpanel ${state.tab==='liq'?'on':''}">${renderLiquidity()}</div>
-    <div class="tabpanel ${state.tab==='pos'?'on':''}">${renderPositions()}</div>
-    ${DATA.trendsAvailable ? `<div class="tabpanel ${state.tab==='trends'?'on':''}">${renderTrends()}</div>` : ''}
-    ${renderFooter()}
-    </div>
-  `;
-  attachChromeEvents();
-  attachBlotterEvents();
-  drawCharts();
+function gicsReconNotes(g, extra) {
+  const bits = [];
+  if (!g) return '';
+  bits.push('Usable coverage: prior ' + fmtPct(g.priorCoveragePct) + ', current ' + fmtPct(g.currentCoveragePct) + ' (gate ' + fmtPct((g.coverageThreshold || 0.8) * 100) + ').');
+  if (g.excludedPriorTrueLong) bits.push(fmtUSD(g.excludedPriorTrueLong, true) + ' of prior-quarter Total Exposure has no usable quarter-specific GICS \u2014 excluded from rotation.');
+  if (g.excludedCurrentTrueLong) bits.push(fmtUSD(g.excludedCurrentTrueLong, true) + ' of current-quarter Total Exposure has no usable quarter-specific GICS \u2014 excluded from rotation.');
+  bits.push('Current-quarter mappings are never applied backward. Missing classification is not treated as zero.');
+  if (extra) bits.push(extra);
+  return '<div class="gics-block">' + bits.map(esc).join(' ') + '</div>';
+}
+
+function helpContent(id) {
+  const spec = HELP[id];
+  if (!spec) return null;
+  let qual = spec.qualifier || '';
+  if (id === 'compounding') qual = assumptionLabel();
+  if (id === 'integrity') {
+    const integ = DATA.integrity || {};
+    const extra = [];
+    if (integ.check1Status) extra.push('Check 1: ' + integ.check1Status + '.');
+    if (integ.duplicateGroupCount) extra.push(integ.duplicateGroupCount + ' duplicate group' + (integ.duplicateGroupCount === 1 ? '' : 's') + '.');
+    if (integ.openReviewCount) extra.push(integ.openReviewCount + ' open review' + (integ.openReviewCount === 1 ? '' : 's') + '.');
+    qual = extra.join(' ');
+  }
+  return spec.title + '\n' + spec.body + (qual ? '\n' + qual : '');
+}
+
+function renderHelpBox(id) {
+  const spec = HELP[id];
+  if (!spec) return '';
+  let qual = '';
+  if (id === 'compounding') qual = assumptionLabel();
+  if (id === 'integrity') {
+    const integ = DATA.integrity || {};
+    const extra = [];
+    if (integ.check1Status) extra.push('Check 1: ' + integ.check1Status + '.');
+    if (integ.duplicateGroupCount) extra.push(integ.duplicateGroupCount + ' duplicate group' + (integ.duplicateGroupCount === 1 ? '' : 's') + '.');
+    qual = extra.join(' ');
+  }
+  return '<div class="help-title">' + esc(spec.title) + '</div><div class="help-body">' + esc(spec.body).replace(/\n/g, '<br><br>') + '</div>' + (qual ? '<div class="help-qual">' + esc(qual) + '</div>' : '');
+}
+
+function helpEl() { return document.getElementById('help-tip'); }
+function helpIsOpen() { const el = helpEl(); return el && !el.hidden; }
+function closeHelp() {
+  clearTimeout(helpTimer); clearTimeout(helpCloseTimer);
+  helpTimer = helpCloseTimer = null;
+  helpAnchor = null;
+  const el = helpEl();
+  if (el) { el.hidden = true; el.innerHTML = ''; }
+}
+function scheduleCloseHelp() {
+  clearTimeout(helpCloseTimer);
+  helpCloseTimer = setTimeout(() => closeHelp(), 150);
+}
+function positionHelp() {
+  const el = helpEl();
+  if (!el || el.hidden || !helpAnchor) return;
+  const r = helpAnchor.getBoundingClientRect();
+  const pad = 12, gap = 8;
+  const w = el.offsetWidth || 344;
+  const h = el.offsetHeight || 80;
+  let left;
+  if (r.left > window.innerWidth / 2) left = Math.max(pad, r.right - w);
+  else left = r.left;
+  if (left + w > window.innerWidth - pad) left = Math.max(pad, window.innerWidth - pad - w);
+  if (left < pad) left = pad;
+  let top = r.bottom + gap;
+  const belowFits = top + h <= window.innerHeight - pad;
+  const aboveFits = (r.top - h - gap) >= pad;
+  if (!belowFits && aboveFits) top = r.top - h - gap;
+  else if (!belowFits && !aboveFits) {
+    top = Math.min(Math.max(pad, r.top), Math.max(pad, window.innerHeight - pad - h));
+    const toRight = r.right + gap;
+    const toLeft = r.left - w - gap;
+    if (toRight + w <= window.innerWidth - pad) left = toRight;
+    else if (toLeft >= pad) left = toLeft;
+  }
+  el.style.top = top + 'px';
+  el.style.left = left + 'px';
+}
+function openHelp(anchor, id) {
+  if (state.detail) return;
+  const el = helpEl();
+  if (!el || !HELP[id]) return;
+  clearTimeout(helpCloseTimer);
+  helpAnchor = anchor;
+  el.innerHTML = renderHelpBox(id);
+  el.hidden = false;
+  void el.offsetHeight;
+  positionHelp();
+}
+
+function bindHelp(root) {
+  root.querySelectorAll('[data-help]').forEach(node => {
+    const id = node.dataset.help;
+    node.addEventListener('pointerenter', () => {
+      clearTimeout(helpTimer);
+      helpTimer = setTimeout(() => openHelp(node, id), 300);
+    });
+    node.addEventListener('pointerleave', () => {
+      clearTimeout(helpTimer);
+      scheduleCloseHelp();
+    });
+    node.addEventListener('focus', () => openHelp(node, id));
+    node.addEventListener('blur', () => scheduleCloseHelp());
+  });
+  const tip = helpEl();
+  if (tip) {
+    tip.onpointerenter = () => { clearTimeout(helpCloseTimer); };
+    tip.onpointerleave = () => scheduleCloseHelp();
+  }
+}
+
+function findCompany(issuerOrKey) {
+  const q = (issuerOrKey || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  return (DATA.companies || []).find(c => c.issuerKey === q || (c.issuer || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim() === q);
+}
+function captureOrigin(rowKey) {
+  snapshotUi();
+  state.origin = {
+    tab: state.tab, search: state.search, expSearch: state.expSearch, chgSearch: state.chgSearch,
+    filter: state.filter, chgFilter: state.chgFilter, sortKey: state.sortKey, sortDir: state.sortDir,
+    expSortKey: state.expSortKey, expSortDir: state.expSortDir, chgSortKey: state.chgSortKey, chgSortDir: state.chgSortDir,
+    selectedIndustry: state.selectedIndustry, liqView: state.liqView, selectedKey: rowKey || state.selectedKey,
+    _scroll: Object.assign({}, state._scroll), _win: state._win.slice(),
+  };
+}
+function cssEscape(value) {
+  if (window.CSS && CSS.escape) return CSS.escape(value);
+  return String(value).replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
+}
+function openCompany(issuerKey, rowKey) {
+  const c = findCompany(issuerKey);
+  if (!c) return;
+  if (!state.detail) captureOrigin(rowKey);
+  closeHelp();
+  if (c.instrumentCount === 1) {
+    const inst = c.instruments[0];
+    state.detail = { kind: 'leg', cusip: inst.cusip, instrumentClass: inst.instrumentClass, companyKey: c.issuerKey };
+  } else {
+    state.detail = { kind: 'company', issuerKey: c.issuerKey };
+  }
+  state.detailJustOpened = true;
+  state.selectedKey = rowKey || sid(c.cusips && c.cusips[0], 'COMPANY');
+  render();
+}
+function openLeg(cusip, instrumentClass, rowKey) {
+  const company = (DATA.companies || []).find(c => c.instruments.some(i => i.cusip === cusip && i.instrumentClass === instrumentClass));
+  if (!state.detail) captureOrigin(rowKey);
+  closeHelp();
+  state.detail = { kind: 'leg', cusip, instrumentClass, companyKey: company ? company.issuerKey : null };
+  state.detailJustOpened = true;
+  state.selectedKey = rowKey || sid(cusip, instrumentClass);
+  render();
+}
+function closeDetail() {
+  const origin = state.origin;
+  state.detail = null;
+  state.detailJustOpened = false;
+  document.body.classList.remove('drawer-open');
+  if (origin) {
+    state.tab = origin.tab;
+    state.search = origin.search;
+    state.expSearch = origin.expSearch;
+    state.chgSearch = origin.chgSearch;
+    state.filter = origin.filter;
+    state.chgFilter = origin.chgFilter;
+    state.sortKey = origin.sortKey;
+    state.sortDir = origin.sortDir;
+    state.expSortKey = origin.expSortKey;
+    state.expSortDir = origin.expSortDir;
+    state.chgSortKey = origin.chgSortKey;
+    state.chgSortDir = origin.chgSortDir;
+    state.selectedIndustry = origin.selectedIndustry;
+    state.liqView = origin.liqView;
+    state.selectedKey = origin.selectedKey;
+    state._pendingRestore = origin;
+  }
+  render();
+  if (origin && origin.selectedKey) {
+    const row = document.querySelector('[data-row-key="' + cssEscape(origin.selectedKey) + '"]');
+    if (row) row.focus();
+  }
+}
+function exclusionFor(cusip, instrumentClass) {
+  return (currentRateData().excluded || []).find(e => e.cusip === cusip && e.instrumentClass === instrumentClass) || null;
+}
+function goTab(tab, extra) {
+  closeHelp();
+  state.more = null;
+  state.selectedKey = null;
+  state.tab = tab;
+  if (extra) Object.assign(state, extra);
+  state._win = [0, window.scrollY];
+  render();
+  window.scrollTo(0, 0);
+}
+function snapshotUi() {
+  const t = {};
+  document.querySelectorAll('[data-scroll]').forEach(el => { t[el.dataset.scroll] = el.scrollTop; });
+  state._scroll = t;
+  state._win = [window.scrollX, window.scrollY];
+}
+function restoreUi() {
+  document.querySelectorAll('[data-scroll]').forEach(el => {
+    if (state._scroll[el.dataset.scroll] != null) el.scrollTop = state._scroll[el.dataset.scroll];
+  });
+  if (!state.detail) window.scrollTo(state._win[0] || 0, state._win[1] || 0);
+}
+
+function tile(opts) {
+  const valCls = opts.tone === 'review' ? ' review-val' : opts.tone === 'crit' ? ' crit-val' : '';
+  const compact = opts.compact ? ' compact' : '';
+  const plainVal = String(opts.value == null ? '' : opts.value).replace(/<[^>]+>/g, '');
+  const aria = esc((opts.label || '') + ' ' + plainVal + ' ' + (opts.qual || ''));
+  return '<button type="button" class="tile' + compact + '" data-help="' + opts.help + '" data-go="' + (opts.go || '') + '" data-go-extra="' + esc(opts.goExtra || '') + '" aria-label="' + aria + '">' +
+    '<div class="tile-label">' + esc(opts.label) + '</div><span class="info" aria-hidden="true">i</span>' +
+    '<div class="tile-value' + valCls + '">' + opts.value + '</div>' +
+    '<div class="tile-qual" title="' + esc(opts.qual) + '">' + esc(opts.qual) + '</div></button>';
+}
+
+function rankBarRow(opts) {
+  const w = Math.max(0, Math.min(100, opts.widthPct || 0));
+  const cls = ['rank-row', opts.delta ? 'delta' : '', opts.muted ? 'muted' : '', opts.on ? 'on' : ''].filter(Boolean).join(' ');
+  let track;
+  if (opts.delta) {
+    const half = (w / 2).toFixed(1);
+    const dir = opts.neg ? 'neg' : 'pos';
+    track = '<span class="rank-track delta-track" aria-hidden="true"><span class="rank-mid"></span><span class="rank-fill ' + dir + '" style="width:' + half + '%"></span></span>';
+  } else {
+    track = '<span class="rank-track" aria-hidden="true"><span class="rank-fill' + (opts.muted ? ' dim' : '') + '" style="width:' + w.toFixed(1) + '%"></span></span>';
+  }
+  const inner =
+    '<span class="rank-name" title="' + esc(opts.name) + '">' + esc(opts.name) + '</span>' +
+    track +
+    (opts.pct != null ? '<span class="rank-pct">' + opts.pct + '</span>' : '') +
+    '<span class="rank-usd">' + opts.usd + '</span>';
+  if (opts.clickable) {
+    return '<button type="button" class="' + cls + '" data-industry="' + esc(opts.name) + '" title="' + esc(opts.name) + '">' + inner + '</button>';
+  }
+  return '<div class="' + cls + '">' + inner + '</div>';
 }
 
 function renderHeader() {
   const name = DATA.managerDisplayName || DATA.fundName;
   const q = DATA.currentQuarterLabel || '';
-  return `<header>
-    <h1>${esc(name)}</h1>
-    <span class="sub">${esc(q)} 13F \u00b7 ${DATA.positionCount} economic positions</span>
-    ${integrityTag()}
-  </header>
-  <p class="sub">${esc(DATA.asOf.filedValueLabel)}. ${esc(DATA.asOf.verifiedValueLabel)}. Filing date ${esc(DATA.asOf.filingDate || '\u2014')}.</p>`;
+  const filed = fmtDate(DATA.asOf && DATA.asOf.filingDate);
+  const values = fmtDate(DATA.asOf && DATA.asOf.filedPeriod);
+  return '<div class="hdr"><h1>' + esc(name) + '</h1>' +
+    '<span class="hdr-meta">' + esc(q) + ' \u00b7 ' + DATA.positionCount + ' economic positions</span>' +
+    '<span class="hdr-right">' + integrityTag() + '</span></div>' +
+    '<p class="filed-line">Filed ' + esc(filed) + ' \u00b7 Filed values: ' + esc(values) + ' \u00b7 Verified values: Bloomberg PX_LAST</p>';
 }
-
 function renderTabs() {
-  const tabs = [['overview','Overview'],['changes','Changes'],['exp','Exposure & Hedging'],['liq','Liquidity'],['pos','Positions']];
-  if (DATA.trendsAvailable) tabs.push(['trends','Trends']);
-  return `<div class="tabbar">${tabs.map(([k,l]) => `<div class="tabbtn ${state.tab===k?'on':''}" data-tab="${k}">${l}</div>`).join('')}</div>`;
+  const tabs = [['overview','Overview'],['changes','Changes'],['exp','Exposure & Hedges'],['liq','Liquidity & Positions']];
+  return '<div class="tabbar" role="tablist">' + tabs.map(([k,l]) =>
+    '<button type="button" class="tabbtn' + (state.tab===k?' on':'') + '" data-tab="' + k + '" role="tab" aria-selected="' + (state.tab===k?'true':'false') + '">' + l + '</button>'
+  ).join('') + '</div>';
 }
 
-function renderControls() {
-  return `<div class="ctrl">
-    <label>Participation
-      ${DATA.participationRates.map(r => `<button class="rate-btn ${state.rate===String(r)?'on':''}" data-rate="${r}">${(r*100).toFixed(0)}%</button>`).join('')}
-    </label>
-    <label>Position basis
-      <button class="basis-btn ${state.basis==='common'?'on':''}" data-basis="common">Common only</button>
-      <button class="basis-btn ${state.basis==='common_plus_calls'?'on':''}" data-basis="common_plus_calls">Common + calls</button>
-    </label>
-    <span class="ctrl-note">Applies to ADV-modeled securities only. Every combination is precomputed in Python.</span>
-  </div>`;
+function secCell(ticker, issuer, extra) {
+  const full = (ticker ? ticker + ' ' : '') + (issuer || '');
+  return '<div class="sec" data-full-name="' + esc(full) + '"><span class="tk">' + (ticker ? esc(ticker) : dash()) + '</span><span class="nm">' + esc(issuer || '') + (extra || '') + '</span></div>';
 }
 
-function hedgeBarHtml(pct) {
-  if (pct === null || pct === undefined) return '';
-  if (pct <= 100) return `<div class="hedge-bar-track"><div class="hedge-bar-fill" style="width:${pct}%"></div></div>`;
-  const over = pct - 100;
-  const overShare = Math.min(over, 100);
-  return `<div class="hedge-bar-track"><div class="hedge-bar-fill" style="width:${10000/pct}%"></div><div class="hedge-bar-over" style="width:${overShare * 100 / pct}%"></div></div>
-    <div class="card-note">Hedge ratio ${fmtPct(pct)} exceeds 100% \u2014 overflow shown in red, not capped.</div>`;
+function renderLargestExposures() {
+  const rows = [...(DATA.exposures || [])].sort((a,b) => (b.trueLongExposure||0) - (a.trueLongExposure||0)).slice(0, 10);
+  return '<div class="panel"><div class="panel-h"><span class="panel-title">Largest Exposures</span><span class="panel-note">Ranked by Total Exposure</span></div>' +
+    '<div class="table-clip ov"><table class="ov-table"><colgroup><col><col style="width:16%"><col style="width:16%"><col style="width:18%"><col style="width:16%"></colgroup>' +
+    '<thead><tr><th class="l">Security</th><th>Filed Common</th><th>Call notional</th><th>Total Exposure</th><th data-help="pctCommon">% Common Book</th></tr></thead><tbody>' +
+    rows.map(e => {
+      const key = 'exp-' + e.cusip;
+      const pct = e.isCallOnly ? '<span class="badge der">Options-only</span>' : fmtPct(e.pctOfCommonBook, 2);
+      return '<tr class="clickable' + (state.selectedKey===key?' sel':'') + '" tabindex="0" data-row-key="' + esc(key) + '" data-open-company="' + esc(e.issuerKey || e.issuer) + '">' +
+        '<td class="l">' + secCell(e.ticker, e.issuer, e.isCallOnly ? ' <span class="badge der">Options-only</span>' : '') + '</td>' +
+        '<td>' + money(e.commonValue, true, e.commonValue ? '' : 'z') + '</td>' +
+        '<td>' + callMoney(e.callValue) + '</td>' +
+        '<td>' + money(e.trueLongExposure, true) + '</td>' +
+        '<td>' + pct + '</td></tr>';
+    }).join('') +
+    '</tbody></table></div><div class="panel-foot"><span>Filed / quarter-end \u00b7 Calls are not delta-adjusted</span><button type="button" class="linkish" data-tab="exp">All exposures \u2192</button></div></div>';
 }
 
-function renderDetail() {
-  if (!state.detail) return '';
-  if (state.detail.kind === 'company') return renderCompanyDetail(state.detail.issuerKey);
-  return renderLegDetail(state.detail.cusip, state.detail.instrumentClass);
-}
-
-function renderCompanyDetail(issuerKey) {
-  const c = findCompany(issuerKey);
-  if (!c) return '';
-  return `<div class="card">
-    <div class="card-head">
-      <span class="card-title">${esc(c.issuer)} \u00b7 ${c.instrumentCount} instruments</span>
-      <button class="detail-close" id="detail-close">Close</button>
-    </div>
-    <div class="card-body">
-      <div class="stat-row"><span class="stat-label">Filed common / long-class</span><span class="stat-value">${fmtUSD(c.commonValue)} \u00b7 ${c.isCallOnly ? 'Options-only' : fmtPct(c.pctOfCommonBook, 2) + ' of Common Book'}</span></div>
-      <div class="stat-row"><span class="stat-label">Call notional (not delta-adjusted)</span><span class="stat-value">${fmtUSD(c.callValue)}${c.optionToCommonRatioPct ? ' \u00b7 Overlay ' + c.optionToCommonRatioPct.toFixed(0) + '% of Common' : ''}</span></div>
-      <div class="stat-row"><span class="stat-label">Put notional</span><span class="stat-value">${fmtUSD(c.putValue)}</span></div>
-      <div class="stat-row"><span class="stat-label">True long</span><span class="stat-value">${fmtUSD(c.trueLongExposure)}</span></div>
-      <h2>Instrument Breakdown</h2>
-      ${c.instruments.map(inst => {
-        const ex = exclusionFor(inst.cusip, inst.instrumentClass);
-        const exclLabel = (ex && ex.reason) || (inst.excludedFromAdvModel ? 'Excluded from ADV liquidity model' : null);
-        return `
-        <div class="stat-row clickable-name" data-open-leg="${inst.cusip}|${inst.instrumentClass}">
-          <span class="stat-label issuer">${esc(inst.instrumentClass)}${inst.ticker ? ' \u00b7 ' + esc(inst.ticker) : ''} \u00b7 ${esc(inst.cusip)}</span>
-          <span class="stat-value">${fmtUSD(inst.filedValue, true)}
-            ${exclLabel ? ' \u00b7 <span class="badge ba">' + esc(exclLabel) + '</span>' : ''}
-            ${!isDerivativeLeg(inst.instrumentClass) && inst.pctOfCommonBook !== null && inst.pctOfCommonBook !== undefined ? ' \u00b7 ' + fmtPct(inst.pctOfCommonBook, 2) + ' of Common Book' : ''}
-            ${inst.isCall ? ' \u00b7 Call notional' : (inst.isPut ? ' \u00b7 Put notional' : (inst.instrumentClass === 'WARRANT' ? ' \u00b7 Warrant notional' : ''))}
-          </span>
-        </div>`;
-      }).join('')}
-    </div>
-    <div class="section-note">Internal identity is (CUSIP, instrumentClass). Dollar figures above are filed / quarter-end unless marked verified.</div>
-  </div>`;
-}
-
-function renderLegDetail(cusip, instrumentClass) {
-  const company = (DATA.companies || []).find(c => c.instruments.some(i => i.cusip === cusip && i.instrumentClass === instrumentClass));
-  const inst = company ? company.instruments.find(i => i.cusip === cusip && i.instrumentClass === instrumentClass) : null;
-  const exp = (DATA.exposures || []).find(e => e.cusip === cusip);
+function attnCats() {
   const r = currentRateData();
-  const liq = (r.liquidity || []).find(p => p.cusip === cusip && p.instrumentClass === instrumentClass);
-  const closed = (DATA.closedPositions || []).find(p => p.cusip === cusip && p.instrumentClass === instrumentClass);
-  const exclusion = exclusionFor(cusip, instrumentClass) || (inst && inst.excludedFromAdvModel ? {reason: 'Excluded from ADV liquidity model'} : null);
-  const title = (inst && company) ? company.issuer : (exp ? exp.issuer : (closed ? closed.issuer : cusip));
-  return `<div class="card">
-    <div class="card-head">
-      <span class="card-title">${esc(title)} \u00b7 ${esc(instrumentClass)} \u00b7 ${esc(cusip)}</span>
-      <span>
-        ${company && company.instrumentCount > 1 ? `<button data-open-company="${esc(company.issuerKey)}">Company view</button> ` : ''}
-        <button id="detail-close">Close</button>
-      </span>
-    </div>
-    <div class="card-body">
-      ${isDerivativeLeg(instrumentClass) ? `
-        <div class="stat-row"><span class="stat-label">${instrumentClass === 'WARRANT' ? 'Warrant notional' : ((instrumentClass || '').toUpperCase().includes('PUT') ? 'Put notional' : 'Call notional')}</span><span class="stat-value">${fmtUSD(inst ? inst.filedValue : ((instrumentClass || '').toUpperCase().includes('PUT') ? (exp && exp.putValue) : (exp && exp.callValue)))}</span></div>
-        <div class="stat-row"><span class="stat-label">CUSIP true long (all legs)</span><span class="stat-value">${exp ? fmtUSD(exp.trueLongExposure) : '\u2014'}</span></div>
-        <div class="stat-row"><span class="stat-label">GICS L3</span><span class="stat-value">${esc((exp && exp.gicsIndustry) || 'Unclassified')}</span></div>` : (exp ? `<div class="stat-row"><span class="stat-label">Filed common / long-class</span><span class="stat-value">${fmtUSD(exp.commonValue)} \u00b7 ${commonBookCell(exp)}</span></div>
-        <div class="stat-row"><span class="stat-label">Call notional</span><span class="stat-value">${fmtUSD(exp.callValue)}</span></div>
-        <div class="stat-row"><span class="stat-label">Put notional</span><span class="stat-value">${fmtUSD(exp.putValue)}</span></div>
-        <div class="stat-row"><span class="stat-label">True long</span><span class="stat-value">${fmtUSD(exp.trueLongExposure)}</span></div>
-        <div class="stat-row"><span class="stat-label">GICS L3</span><span class="stat-value">${esc(exp.gicsIndustry || 'Unclassified')}</span></div>` : '')}
-      ${liq ? `<div class="stat-row"><span class="stat-label">Verified market value</span><span class="stat-value">${fmtUSD(liq.verifiedValue)} @ $${liq.verifiedPrice.toFixed(2)}</span></div>
-        <div class="stat-row"><span class="stat-label">Days to liquidate 20d / 3m</span><span class="stat-value">${fmtDays(liq.daysToLiquidate_20d)} / ${fmtDays(liq.daysToLiquidate_3m)}</span></div>
-        <div class="stat-row"><span class="stat-label">ADV 20d / % SO</span><span class="stat-value">${liq.adv_20d ? liq.adv_20d.toLocaleString() : '\u2014'} / ${liq.pctSharesOutstanding!=null ? liq.pctSharesOutstanding.toFixed(2)+'%' : '\u2014'}</span></div>` : ''}
-      ${exclusion ? `<div class="stat-row"><span class="stat-label">Liquidity model</span><span class="stat-value"><span class="badge ba">${esc(exclusion.reason || 'Excluded from ADV liquidity model')}</span></span></div>` : ''}
-      ${closed ? `<div class="stat-row"><span class="stat-label">Status</span><span class="stat-value">${statusBadge('CLOSED')} \u00b7 prior filed ${fmtUSD(closed.priorExposure)}</span></div>` : ''}
-    </div>
-  </div>`;
-}
-
-function liveCompounding() {
-  return (currentRateData().liquidity || []).filter(p => p.compoundingIlliquidity);
-}
-
-function renderOverview() {
-  const r = currentRateData();
-  const compounding = liveCompounding();
-  const attnCount = (DATA.attentionInbox || []).reduce((n, c) => {
-    if (c.countsTowardAttention === false || c.id === 'expectedAdvExclusions') return n;
-    if (c.id === 'concentratedIlliquid') return n + (r.liquidity || []).filter(p => p.concentratedAndIlliquid).length;
-    return n + (c.items || []).length;
-  }, 0);
-  const topCommon = [...(DATA.exposures || [])].filter(e => e.commonValue > 0 || e.isCallOnly).sort((a,b) => (b.commonValue||0) - (a.commonValue||0) || (b.callValue||0) - (a.callValue||0)).slice(0, 10);
-  return `
-  <div class="stats hero">
-    <div class="st hero"><div class="l">True Long Book</div><div class="v">${fmtUSD(DATA.concentration.fullBookTotal, true)}</div><div class="n">filed common + call notional \u2212 puts \u00b7 hedges excluded</div></div>
-    <div class="st hero"><div class="l">Index Hedge Overlay</div><div class="v">${fmtPct(DATA.hedge.indexHedgeRatioPct)}</div><div class="n">${fmtUSD(DATA.hedge.indexPutNotional,true)} index puts vs ${fmtUSD(DATA.hedge.longBook,true)} long book</div>${hedgeBarHtml(DATA.hedge.indexHedgeRatioPct)}</div>
-    <div class="st"><div class="l">Common Book</div><div class="v">${fmtUSD(DATA.commonBookTotal, true)}</div><div class="n">filed long-class value \u00b7 position-weight denominator</div></div>
-    <div class="st"><div class="l">Top 10 Concentration</div><div class="v">${fmtPct(DATA.concentration.top10PctOfFullBook)}</div><div class="n">of true-long book (intentional dual basis)</div></div>
-    <div class="st"><div class="l">Attention</div><div class="v" style="color:${attnCount?'var(--amb)':'var(--txt)'}">${attnCount}</div><div class="n">items across four exception categories</div></div>
-    <div class="st" title="Live at the current participation rate and basis."><div class="l">Compounding Illiquidity</div><div class="v" style="color:${compounding.length?'var(--amb)':'var(--txt)'}">${compounding.length}</div><div class="n">@ ${(parseFloat(state.rate)*100).toFixed(0)}% ADV / ${state.basis==='common'?'common':'common+calls'}</div></div>
-  </div>
-  ${renderHedgeTeaser()}
-  ${renderAttentionInbox()}
-  ${renderQoQDollarSummary()}
-  ${renderGicsTeaser()}
-  <div class="card">
-    <div class="card-head"><span class="card-title">Top Positions</span><span class="card-note">% of Common Book \u00b7 call notional separate</span></div>
-    <div class="card-body">
-      <table><thead><tr><th class="l">Position</th><th>Filed Common</th><th>Call Notional</th><th>True Long</th><th class="l">Weight</th></tr></thead><tbody>
-      ${topCommon.map(e => `<tr class="clickable" data-open-company="${esc(e.issuerKey || e.issuer)}">
-        <td class="l issuer">${esc(e.ticker || '')} ${esc(e.issuer)}${e.isCallOnly?' <span class="badge bp">Options-only</span>':''}</td>
-        <td>${fmtUSD(e.commonValue, true)}</td>
-        <td class="opt">${fmtUSD(e.callValue, true)}</td>
-        <td>${fmtUSD(e.trueLongExposure, true)}</td>
-        <td class="l">${commonBookCell(e)}</td>
-      </tr>`).join('')}
-      </tbody></table>
-    </div>
-    <div class="section-note">Filed / quarter-end values. Call notional is 13F underlying notional, not premium and not delta-adjusted.</div>
-  </div>`;
-}
-
-function renderHedgeTeaser() {
-  const idx = DATA.hedgeDetail.indexHedgePositions || [];
-  const sec = DATA.hedgeDetail.sectorHedgePositions || [];
-  if (!idx.length && !sec.length) return '';
-  return `<div class="two-col">
-    <div class="card">
-      <div class="card-head"><span class="card-title">Index Hedge Constituents</span><span class="card-note">broad-market only</span></div>
-      <div class="card-body">
-        ${idx.length ? idx.map(p => `<div class="stat-row"><span class="stat-label"><span class="issuer">${p.ticker?esc(p.ticker):'\u2014'}</span> ${esc(p.issuer)}</span><span class="stat-value">${fmtUSD(p.value,true)}</span></div>`).join('') : '<span class="card-note">None.</span>'}
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head"><span class="card-title">Sector / Other ETF Hedges</span><span class="card-note">excluded from the index ratio</span></div>
-      <div class="card-body">
-        ${sec.length ? `<div class="stat-row"><span class="stat-label">Total notional</span><span class="stat-value">${fmtUSD(DATA.hedgeDetail.sectorHedgeTotal,true)}</span></div>` + sec.map(p => `<div class="stat-row"><span class="stat-label">${p.ticker?esc(p.ticker)+' ':''}${esc(p.issuer)} \u00b7 ${esc(p.category)}</span><span class="stat-value">${fmtUSD(p.value,true)}</span></div>`).join('') : '<span class="card-note">None in this book.</span>'}
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderAttentionInbox() {
-  const r = currentRateData();
-  const liveConc = (r.liquidity || []).filter(p => p.concentratedAndIlliquid).sort((a,b) => (b.verifiedValue||0)-(a.verifiedValue||0));
-  const cats = (DATA.attentionInbox || []).map(c => {
-    if (c.id !== 'concentratedIlliquid') return c;
-    return { ...c, items: liveConc.map(p => ({
-      cusip: p.cusip, instrumentClass: p.instrumentClass, issuer: p.issuer, ticker: p.ticker,
-      rule: 'Concentrated and compounding-illiquid',
-      numberLabel: 'days 20d \u00b7 % SO',
-      numberValue: p.daysToLiquidate_20d,
-      dollars: p.verifiedValue,
-    }))};
-  }).filter(c => c.id !== 'expectedAdvExclusions' || (c.items && c.items.length));
-  return `<div class="card">
-    <div class="card-head"><span class="card-title">Attention Inbox</span><span class="card-note">grouped by rule type \u2014 not a single score</span></div>
-    <div class="card-body">
-      ${cats.map(cat => `<div class="inbox-cat">
-        <h3>${esc(cat.label)} \u00b7 ${cat.items.length}</h3>
-        ${cat.items.length === 0 ? '<div class="card-note">None.</div>' : cat.items.slice(0, 8).map(item => `
-          <div class="inbox-row" ${item.cusip ? `data-open-leg="${item.cusip}|${item.instrumentClass||'COMMON'}"` : ''}>
-            <div><span class="issuer">${esc(item.ticker || '')} ${esc(item.issuer)}</span> <span class="inbox-rule">${esc(item.rule)}</span></div>
-            <div class="num">${item.numberLabel ? esc(String(item.numberLabel)) + ': ' : ''}${item.numberValue !== null && item.numberValue !== undefined && typeof item.numberValue === 'number' ? (Math.abs(item.numberValue) >= 1000 ? fmtUSD(item.numberValue, true) : item.numberValue) : esc(String(item.numberValue || ''))}${item.dollars ? ' \u00b7 ' + fmtUSD(item.dollars, true) : ''}</div>
-          </div>`).join('') + (cat.items.length > 8 ? `<div class="card-note">and ${cat.items.length - 8} more</div>` : '')}
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-
-function renderQoQDollarSummary() {
-  if (!DATA.qoqAvailable) {
-    return `<div class="card"><div class="card-head"><span class="card-title">Dollar-Weighted Changes</span></div>
-      <div class="card-body"><span class="card-note">No prior quarter supplied.</span></div></div>`;
+  const live = liveConc().sort((a,b) => (b.verifiedValue||0)-(a.verifiedValue||0));
+  const inbox = DATA.attentionInbox || [];
+  const byId = Object.fromEntries(inbox.map(c => [c.id, c]));
+  const regulatory = byId.regulatory || { items: [] };
+  const coverage = byId.coverage || { items: [] };
+  const moves = byId.dollarMoves || { items: [] };
+  const concItems = live.map(p => ({
+    cusip: p.cusip, instrumentClass: p.instrumentClass, issuer: p.issuer, ticker: p.ticker,
+    rule: 'Concentrated and compounding-illiquid',
+    numberValue: p.daysToLiquidate_20d, numberValueSecondary: p.pctSharesOutstanding, dollars: p.verifiedValue,
+  }));
+  function exampleReg(it) {
+    if (!it) return 'None flagged';
+    const tk = it.ticker || tickerFor(it.cusip);
+    const so = it.numberValue != null ? it.numberValue.toFixed(2) + '% SO' : '';
+    return (tk || it.issuer) + (so ? ' \u00b7 ' + so : '');
   }
-  const buckets = DATA.qoqBuckets || [];
-  return `<div class="card">
-    <div class="card-head"><span class="card-title">Dollar-Weighted Changes</span><span class="card-note">filed value \u00b7 share-status taxonomy unchanged \u00b7 <span class="clickable-name" data-tab="changes">open Changes</span></span></div>
-    <div class="card-body">
-      <table><thead><tr><th class="l">Status</th><th>Count</th><th>Filed \u0394$</th><th>\u0394$ / Current Common Book</th><th class="l">Top names</th></tr></thead><tbody>
-      ${buckets.filter(b => b.status !== 'UNCHANGED' || b.count).map(b => `<tr>
-        <td class="l">${statusBadge(b.status)}</td>
-        <td>${b.count}</td>
-        <td>${fmtUSD(b.dollarChange, true)}</td>
-        <td>${fmtPct(b.pctOfCommonBook, 2)}</td>
-        <td class="l">${(b.topNames||[]).slice(0,3).map(n => esc(n.issuer)).join(' \u00b7 ') || '\u2014'}</td>
-      </tr>`).join('')}
-      </tbody></table>
-    </div>
-    <div class="section-note">\u0394$ is filed-value change (marks + activity). \u0394$ / Current Common Book is that change divided by this quarter's Common Book \u2014 not a position weight. Status is share-count based. CLOSED is included here even when the name is absent from current holdings.</div>
-  </div>`;
+  function exampleConc(it) {
+    if (!it) return 'None flagged';
+    const tk = it.ticker || tickerFor(it.cusip);
+    const d = it.numberValue != null ? fmtDays(it.numberValue) + ' exit' : '';
+    const so = it.numberValueSecondary != null ? it.numberValueSecondary.toFixed(2) + '% SO' : '';
+    return [tk || it.issuer, d, so].filter(Boolean).join(' \u00b7 ');
+  }
+  function exampleCov(it) {
+    if (!it) return 'None flagged';
+    if (!it.cusip && /Unclassified GICS/i.test(it.issuer || '')) return 'Current GICS classification gaps';
+    if (!it.cusip) return it.rule || it.issuer;
+    return (it.ticker || tickerFor(it.cusip) || it.issuer) + (it.rule ? ' \u00b7 ' + it.rule : '');
+  }
+  function exampleMove(it) {
+    if (!it) return 'None flagged';
+    const tk = it.ticker || tickerFor(it.cusip);
+    const kind = instrumentShort(it.instrumentClass);
+    const name = tk ? (tk + (kind ? ' ' + kind : '')) : (it.issuer || '');
+    return name + ' \u00b7 ' + fmtSignedUSD(it.numberValue, true) + ' filed change';
+  }
+  return [
+    { id: 'regulatory', label: 'Ownership / Threshold Review', unit: 'flags', items: regulatory.items, example: exampleReg, help: 'ownership', go: () => goTab('liq', { filter: 'threshold', liqView: 'blotter' }) },
+    { id: 'concentratedIlliquid', label: 'Concentrated + Illiquid', unit: 'positions', items: concItems, example: exampleConc, help: 'concIlliquid', go: () => goTab('liq', { filter: 'concilliq', liqView: 'blotter' }) },
+    { id: 'coverage', label: 'Data Review', unit: 'entries', items: coverage.items, example: exampleCov, help: 'gics', go: () => {
+      const first = coverage.items.find(x => x.cusip);
+      if (first) openLeg(first.cusip, first.instrumentClass || 'COMMON');
+      else { state.open.gicsOv = true; state.tab = 'overview'; render(); }
+    } },
+    { id: 'dollarMoves', label: 'Major Position Moves', unit: 'entries', items: moves.items, example: exampleMove, help: null, go: () => goTab('changes') },
+  ];
 }
 
-function renderGicsTeaser() {
+function renderAttention() {
+  const cats = attnCats();
+  return '<div class="panel"><div class="panel-h"><span class="panel-title">Attention</span><span class="panel-note">Counts may overlap.</span></div>' +
+    cats.map(cat => {
+      const n = cat.items.length;
+      const ex = cat.example(cat.items[0]);
+      const unit = n === 1 ? cat.unit.replace(/s$/, '') : cat.unit;
+      if (cat.unit === 'flags' && n === 1) {}
+      const countLabel = n + ' ' + (n === 1 ? (cat.unit === 'entries' ? 'entry' : cat.unit.replace(/s$/, '')) : cat.unit);
+      const tone = n && (cat.id === 'regulatory' || cat.id === 'concentratedIlliquid') ? (cat.id === 'concentratedIlliquid' ? 'crit-val' : 'review-val') : '';
+      return '<button type="button" class="attn-row" data-attn="' + cat.id + '"' + (cat.help ? ' data-help="' + cat.help + '"' : '') + '>' +
+        '<div><div class="attn-cat">' + esc(cat.label) + '</div><div class="attn-ex">' + esc(n ? ex : 'None flagged') + '</div></div>' +
+        '<div class="attn-count ' + tone + '">' + esc(countLabel) + '</div><div class="attn-chev">\u203a</div></button>';
+    }).join('') + '</div>';
+}
+
+function renderGicsLine(which) {
   const g = DATA.gicsRotation;
-  if (!g) return '';
+  const openKey = which === 'changes' ? 'gicsChg' : 'gicsOv';
+  if (!g) {
+    return '<div class="plain-line"><span>Industry rotation unavailable \u00b7 no prior quarter supplied</span></div>';
+  }
   if (!g.available) {
-    return `<div class="card"><div class="card-head"><span class="card-title">GICS Level 3 Rotation</span></div>
-      <div class="card-body">GICS rotation unavailable \u2014 usable classification coverage: Prior ${fmtPct(g.priorCoveragePct)}, Current ${fmtPct(g.currentCoveragePct)}.</div>
-      ${gicsReconNotes(g)}
-    </div>`;
+    return '<div class="plain-line"><span>Industry rotation unavailable \u00b7 historical coverage below requirement</span>' +
+      '<button type="button" class="linkish" data-toggle="' + openKey + '" data-help="gics">Details</button></div>' +
+      (state.open[openKey] ? gicsReconNotes(g) : '');
+  }
+  if (which === 'changes') {
+    return '<button type="button" class="disc" data-toggle="rot" aria-expanded="' + state.open.rot + '"><span class="disc-chev">\u203a</span><span class="disc-label">Industry rotation</span><span class="disc-meta">Filters this blotter \u00b7 CLOSED retained</span></button>' +
+      (state.open.rot ? '<div class="disc-body">' + renderIndustryRotationList(g) + '</div>' : '');
   }
   const ranked = g.ranked || [];
   const add = ranked.filter(x => x.deltaTrueLong > 0)[0];
   const cut = ranked.filter(x => x.deltaTrueLong < 0)[0];
-  return `<div class="card"><div class="card-head"><span class="card-title">GICS Level 3 Rotation</span><span class="card-note">coverage prior ${fmtPct(g.priorCoveragePct)} / current ${fmtPct(g.currentCoveragePct)} \u00b7 <span class="clickable-name" data-tab="changes">full panel</span></span></div>
-    <div class="card-body">${add ? `Largest add: <span class="issuer">${esc(add.sector)}</span> ${fmtUSD(add.deltaTrueLong,true)}` : ''} ${cut ? `\u00b7 Largest cut: <span class="issuer">${esc(cut.sector)}</span> ${fmtUSD(cut.deltaTrueLong,true)}` : ''}</div>
-    ${gicsReconNotes(g)}
-  </div>`;
+  const teaser = [add ? 'Largest add: ' + add.sector + ' ' + fmtSignedUSD(add.deltaTrueLong, true) : '', cut ? 'Largest cut: ' + cut.sector + ' ' + fmtUSD(cut.deltaTrueLong, true) : ''].filter(Boolean).join(' \u00b7 ');
+  return '<div class="plain-line"><span>' + esc(teaser || 'Industry rotation available') + '</span><button type="button" class="linkish" data-toggle="' + openKey + '" data-help="gics">Details</button></div>' +
+    (state.open[openKey] ? '<div class="disc-body">' + renderIndustryRotationList(g) + gicsReconNotes(g) + '</div>' : '');
+}
+
+function renderIndustryRotationList(g) {
+  const ranked = g.ranked || [];
+  if (!ranked.length) return '<div class="z">No industry rows.</div>';
+  const maxAbs = ranked.reduce((m, s) => Math.max(m, Math.abs(s.deltaTrueLong || 0)), 0);
+  const clear = state.selectedIndustry
+    ? '<button type="button" class="quiet rank-clear" id="clear-industry">Clear industry filter</button>'
+    : '';
+  return clear + ranked.map(s => rankBarRow({
+    name: s.sector,
+    widthPct: maxAbs ? Math.abs(s.deltaTrueLong || 0) / maxAbs * 100 : 0,
+    usd: fmtSignedUSD(s.deltaTrueLong, true),
+    neg: (s.deltaTrueLong || 0) < 0,
+    delta: true,
+    clickable: true,
+    on: state.selectedIndustry === s.sector,
+  })).join('');
+}
+
+function renderHistory(which) {
+  if (!DATA.trendsAvailable) return '';
+  const key = which === 'changes' ? 'histChg' : 'histOv';
+  const qs = DATA.trendsOverTime || [];
+  const labels = (DATA.quarterLabels || []).map(quarterLabel);
+  const range = labels.length ? labels[0] + ' \u2013 ' + labels[labels.length - 1] : '';
+  return '<button type="button" class="disc" data-toggle="' + key + '" aria-expanded="' + state.open[key] + '"><span class="disc-chev">\u203a</span><span class="disc-label">History \u00b7 ' + qs.length + ' quarter' + (qs.length===1?'':'s') + '</span><span class="disc-meta">' + esc(range) + '</span></button>' +
+    (state.open[key] ? '<div class="disc-body"><table><thead><tr><th class="l">Quarter</th><th>Total Exposure</th><th>Economic positions</th><th>Index Hedge</th><th>Top 10 %</th></tr></thead><tbody>' +
+      qs.map(q => '<tr><td class="l">' + esc(quarterLabel(q.quarter)) + '</td><td>' + money(q.grossLong, true) + '</td><td>' + q.positionCount + '</td><td>' + fmtPct(q.indexHedgeRatioPct) + '</td><td>' + fmtPct(q.top10PctOfFullBook, 2) + '</td></tr>').join('') +
+      '</tbody></table><div class="panel-note" style="margin-top:8px">Each quarter uses its own SEC values. Current GICS is never copied backward.</div></div>' : '');
+}
+
+function renderOverview() {
+  const compounding = liveCompounding();
+  const hedge = DATA.hedge || {};
+  return '<div class="tiles-4">' +
+    tile({ label: 'Total Exposure', value: fmtUSD(DATA.concentration.fullBookTotal, true), qual: 'Index hedges shown separately', help: 'totalExposure', go: 'exp' }) +
+    tile({ label: 'Index Hedge', value: fmtPct(hedge.indexHedgeRatioPct), qual: fmtUSD(hedge.indexPutNotional, true) + ' broad-market puts', help: 'indexHedge', go: 'exp' }) +
+    tile({ label: 'Top 10 Concentration', value: fmtPct(DATA.concentration.top10PctOfFullBook), qual: 'of Total Exposure', help: 'top10', go: 'exp', goExtra: 'top10' }) +
+    tile({ label: 'Compounding Illiquidity', value: compounding.length + ' position' + (compounding.length===1?'':'s'), qual: assumptionLabel(), help: 'compounding', go: 'liq', goExtra: 'compounding', tone: compounding.length ? 'review' : '' }) +
+    '</div><div class="split-60">' + renderLargestExposures() + renderAttention() + '</div>' +
+    renderGicsLine('overview') + renderHistory('overview');
+}
+
+function qoqBucket(status) {
+  return (DATA.qoqBuckets || []).find(b => b.status === status) || { count: 0, topNames: [], dollarChange: 0 };
+}
+function blotterByStatus(status) {
+  return (DATA.changesBlotter || []).filter(p => p.status === status);
+}
+function extremeChange(status, dir) {
+  const rows = blotterByStatus(status);
+  if (!rows.length) return null;
+  return rows.slice().sort((a,b) => dir * ((a.dollarChange||0) - (b.dollarChange||0)))[0];
 }
 
 function renderChanges() {
-  const g = DATA.gicsRotation;
-  return `${renderQoQDollarSummary()}
-  ${renderGicsRotationPanel(g)}
-  <div class="card">
-    <div class="card-head"><span class="card-title">Security Changes</span><span class="card-note">share-status \u00b7 includes CLOSED \u00b7 ${state.selectedIndustry ? 'filtered to ' + esc(state.selectedIndustry) : 'all names'}</span></div>
-    <div class="card-body">
-      <div class="table-controls">
-        <input class="search-input" id="chg-search" placeholder="Search issuer, ticker, CUSIP, GICS\u2026" value="${esc(state.chgSearch)}">
-        ${['all','NEW','INCREASED','DECREASED','CLOSED'].map(f => `<div class="filter-chip ${state.chgFilter===f?'on':''}" data-chg-filter="${f}">${f==='all'?'All':f}</div>`).join('')}
-        ${state.selectedIndustry ? `<div class="filter-chip on" id="clear-industry">Clear industry</div>` : ''}
-      </div>
-      <table><thead><tr>
-        <th class="l" data-chg-k="issuer">Issuer</th>
-        <th class="l" data-chg-k="instrumentClass">Instrument</th>
-        <th class="l" data-chg-k="gicsIndustry">GICS L3</th>
-        <th data-chg-k="priorExposure">Prior filed</th>
-        <th data-chg-k="currentExposure">Current filed</th>
-        <th data-chg-k="dollarChange">\u0394$</th>
-        <th data-chg-k="status">Status</th>
-        <th data-chg-k="sharesChangePct">Shares \u0394</th>
-      </tr></thead>
-      <tbody id="chg-tbody">${changeRowsHtml()}</tbody></table>
-    </div>
-    <div class="section-note">\u0394 true-long at the industry level can reflect marks and option notional. This blotter keeps share-count status so activity is separate from exposure change.</div>
-  </div>`;
+  if (!DATA.qoqAvailable) {
+    return '<div class="panel"><div class="panel-h"><span class="panel-title">Security Changes</span></div><div class="empty">No prior quarter supplied</div></div>' + renderHistory('changes');
+  }
+  const add = extremeChange('INCREASED', -1);
+  const red = extremeChange('DECREASED', 1);
+  const nNew = qoqBucket('NEW').count;
+  const nClosed = qoqBucket('CLOSED').count;
+  return '<div class="tiles-4">' +
+    tile({ compact: true, label: 'Largest Add', value: add ? fmtSignedUSD(add.dollarChange, true) : '\u2014', qual: add ? (add.ticker || add.issuer) + ' \u00b7 filed \u0394' : 'No increased positions', help: 'filedDelta', go: 'changes', goExtra: 'INCREASED' }) +
+    tile({ compact: true, label: 'Largest Reduction', value: red ? fmtSignedUSD(red.dollarChange, true) : '\u2014', qual: red ? (red.ticker || red.issuer) + ' \u00b7 filed \u0394' : 'No decreased positions', help: 'filedDelta', go: 'changes', goExtra: 'DECREASED' }) +
+    tile({ compact: true, label: 'New Positions', value: String(nNew), qual: 'Share-count status', help: 'filedDelta', go: 'changes', goExtra: 'NEW' }) +
+    tile({ compact: true, label: 'Closed Positions', value: String(nClosed), qual: 'Included in the blotter', help: 'filedDelta', go: 'changes', goExtra: 'CLOSED' }) +
+    '</div>' +
+    '<div class="panel" style="margin-top:16px"><div class="panel-h"><span class="panel-title">Security Changes</span><span class="panel-note">Status: shares \u00b7 \u0394$: marks + activity</span></div>' +
+    '<div class="toolbar"><input class="search" id="chg-search" placeholder="Search security, ticker or CUSIP" value="' + esc(state.chgSearch) + '">' +
+    ['all','NEW','INCREASED','DECREASED','CLOSED'].map(f => '<button type="button" class="seg' + (state.chgFilter===f?' on':'') + '" data-chg-filter="' + f + '">' + (f==='all'?'All':f.charAt(0)+f.slice(1).toLowerCase()) + '</button>').join('') +
+    '<div class="more-wrap"><button type="button" class="seg' + (state.more==='chg'?' on':'') + '" data-more="chg">More</button>' +
+    (state.more==='chg' ? '<div class="menu"><button type="button" class="menu-item" data-chg-filter="UNCHANGED">Unchanged</button>' +
+      (DATA.chainAvailable ? '<button type="button" class="menu-item" data-chg-filter="reentered">Re-entry</button>' : '<div class="z">Re-entry needs 3+ quarters</div>') +
+      '</div>' : '') + '</div></div>' +
+    '<div class="table-clip chg" data-scroll="chg"><table class="chg-table"><colgroup><col style="width:480px"><col style="width:160px"><col style="width:152px"><col style="width:184px"><col style="width:184px"><col style="width:200px"></colgroup>' +
+    '<thead><tr><th class="l' + (state.chgSortKey==='issuer'?' sorted':'') + '" data-chg-k="issuer">Security / instrument' + sortMark(state.chgSortKey==='issuer') + '</th>' +
+    '<th class="l' + (state.chgSortKey==='status'?' sorted':'') + '" data-chg-k="status">Status' + sortMark(state.chgSortKey==='status') + '</th>' +
+    '<th' + (state.chgSortKey==='sharesChangePct'?' class="sorted"':'') + ' data-chg-k="sharesChangePct">Shares \u0394' + sortMark(state.chgSortKey==='sharesChangePct') + '</th>' +
+    '<th' + (state.chgSortKey==='priorExposure'?' class="sorted"':'') + ' data-chg-k="priorExposure">Prior Filed' + sortMark(state.chgSortKey==='priorExposure') + '</th>' +
+    '<th' + (state.chgSortKey==='currentExposure'?' class="sorted"':'') + ' data-chg-k="currentExposure">Current Filed' + sortMark(state.chgSortKey==='currentExposure') + '</th>' +
+    '<th' + (state.chgSortKey==='dollarChange' || state.chgSortKey==='absDollarChange'?' class="sorted"':'') + ' data-chg-k="dollarChange">Filed \u0394$' + sortMark(state.chgSortKey==='dollarChange' || state.chgSortKey==='absDollarChange') + '</th></tr></thead>' +
+    '<tbody id="chg-tbody">' + changeRowsHtml() + '</tbody></table></div>' +
+    '<div class="panel-foot"><span>All share statuses retained \u00b7 Re-entry and Unchanged under More \u00b7 Filed \u0394$ is marks + activity, not executed cash flow</span></div></div>' +
+    renderGicsLine('changes') + renderHistory('changes');
 }
 
 function gicsFilterCusips() {
@@ -509,10 +917,14 @@ function gicsFilterCusips() {
   if (!row) return null;
   return new Set([...(row.currentCusips||[]), ...(row.closedCusips||[]), ...(row.newCusips||[]), ...(row.continuingCusips||[])]);
 }
-
 function filteredChangesRows() {
   let rows = [...(DATA.changesBlotter || [])];
-  if (state.chgFilter !== 'all') rows = rows.filter(p => p.status === state.chgFilter);
+  if (state.chgFilter === 'reentered') {
+    const ids = reenteredSet();
+    rows = rows.filter(p => ids.has(sid(p.cusip, p.instrumentClass)));
+  } else if (state.chgFilter !== 'all') {
+    rows = rows.filter(p => p.status === state.chgFilter);
+  }
   const cusips = gicsFilterCusips();
   if (cusips) rows = rows.filter(p => cusips.has(p.cusip));
   if (state.chgSearch) {
@@ -520,7 +932,9 @@ function filteredChangesRows() {
     rows = rows.filter(p => (p.issuer||'').toLowerCase().includes(q) || (p.ticker||'').toLowerCase().includes(q) || (p.cusip||'').toLowerCase().includes(q) || (p.gicsIndustry||'').toLowerCase().includes(q) || (p.instrumentClass||'').toLowerCase().includes(q));
   }
   rows.sort((a,b) => {
-    const av = a[state.chgSortKey], bv = b[state.chgSortKey];
+    let av, bv;
+    if (state.chgSortKey === 'absDollarChange') { av = Math.abs(a.dollarChange||0); bv = Math.abs(b.dollarChange||0); }
+    else { av = a[state.chgSortKey]; bv = b[state.chgSortKey]; }
     if (typeof av === 'string' || typeof bv === 'string') return String(av||'').localeCompare(String(bv||'')) * state.chgSortDir;
     if (av === null || av === undefined) return 1;
     if (bv === null || bv === undefined) return -1;
@@ -528,78 +942,52 @@ function filteredChangesRows() {
   });
   return rows;
 }
-
 function changeRowsHtml() {
-  return filteredChangesRows().map(p => `<tr class="clickable" data-open-leg="${p.cusip}|${p.instrumentClass}">
-    <td class="l issuer">${p.ticker ? esc(p.ticker)+' ' : ''}${esc(p.issuer)}</td>
-    <td class="l">${esc(p.instrumentClass)}</td>
-    <td class="l">${esc(p.gicsIndustry || '\u2014')}</td>
-    <td>${fmtUSD(p.priorExposure, true)}</td>
-    <td>${fmtUSD(p.currentExposure, true)}</td>
-    <td>${fmtUSD(p.dollarChange, true)}</td>
-    <td>${statusBadge(p.status)}</td>
-    <td>${p.sharesChangePct !== null && p.sharesChangePct !== undefined ? p.sharesChangePct.toFixed(1)+'%' : '\u2014'}</td>
-  </tr>`).join('');
-}
-
-function renderGicsRotationPanel(g) {
-  if (!g) return `<div class="card"><div class="card-head"><span class="card-title">GICS Level 3 Rotation</span></div><div class="card-body"><span class="card-note">Needs a prior quarter.</span></div></div>`;
-  if (!g.available) {
-    return `<div class="card">
-      <div class="card-head"><span class="card-title">GICS Level 3 Rotation</span></div>
-      <div class="card-body">GICS rotation unavailable \u2014 usable classification coverage: Prior ${fmtPct(g.priorCoveragePct)}, Current ${fmtPct(g.currentCoveragePct)}.</div>
-      ${gicsReconNotes(g, 'Current-quarter mappings are never applied backward.')}
-    </div>`;
-  }
-  const ranked = g.ranked || [];
-  const maxAbs = Math.max(...ranked.map(s => Math.abs(s.deltaTrueLong)), 1);
-  return `<div class="card">
-    <div class="card-head"><span class="card-title">GICS Level 3 Rotation</span><span class="card-note">true-long \u0394$ \u00b7 coverage prior ${fmtPct(g.priorCoveragePct)} / current ${fmtPct(g.currentCoveragePct)} \u00b7 threshold ${fmtPct(g.coverageThreshold*100)}</span></div>
-    <div class="card-body">
-      ${ranked.map(s => `<div class="clickable-name" data-industry="${esc(s.sector)}" style="margin-bottom:9px">
-        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
-          <span class="issuer">${esc(s.sector)}</span>
-          <span class="num">${fmtUSD(s.deltaTrueLong,true)} \u00b7 ${fmtUSD(s.priorTrueLong,true)} \u2192 ${fmtUSD(s.currentTrueLong,true)}</span>
-        </div>
-        <div class="hedge-bar-track"><div class="${s.deltaTrueLong>=0?'hedge-bar-fill':'hedge-bar-over'}" style="width:${Math.abs(s.deltaTrueLong)/maxAbs*100}%"></div></div>
-      </div>`).join('')}
-    </div>
-    ${g.excludedPriorTrueLong || g.excludedCurrentTrueLong ? `<div class="section-note">${g.excludedPriorTrueLong ? fmtUSD(g.excludedPriorTrueLong,true) + ' of prior-quarter true-long excluded (no quarter-specific GICS). ' : ''}${g.excludedCurrentTrueLong ? fmtUSD(g.excludedCurrentTrueLong,true) + ' of current-quarter true-long excluded.' : ''} \u0394$ is exposure change, not automatically manager buying/selling.</div>` : ''}
-  </div>`;
+  const rows = filteredChangesRows();
+  if (!rows.length) return '<tr><td colspan="6"><div class="empty">No positions match these filters <button type="button" class="linkish" id="clear-chg">Clear filters</button></div></td></tr>';
+  return rows.map(p => {
+    const key = 'chg-' + sid(p.cusip, p.instrumentClass);
+    return '<tr class="clickable' + (state.selectedKey===key?' sel':'') + '" tabindex="0" data-row-key="' + esc(key) + '" data-open-leg="' + esc(sid(p.cusip, p.instrumentClass)) + '">' +
+      '<td class="l">' + secCell(p.ticker, p.issuer, p.instrumentClass ? '<span class="inst"> \u00b7 ' + esc(p.instrumentClass) + '</span>' : '') + '</td>' +
+      '<td class="l mono">' + esc(p.status || '') + '</td>' +
+      '<td class="mono">' + fmtSignedPct(p.sharesChangePct) + '</td>' +
+      '<td>' + money(p.priorExposure, true) + '</td>' +
+      '<td>' + money(p.currentExposure, true) + '</td>' +
+      '<td class="mono">' + fmtSignedUSD(p.dollarChange, true) + '</td></tr>';
+  }).join('');
 }
 
 function renderExposure() {
-  return `
-  <div class="stats">
-    <div class="st"><div class="l">Filed Common / Long-class</div><div class="v">${fmtUSD(DATA.commonBookTotal, true)}</div><div class="n">${esc(DATA.asOf.filedValueLabel)}</div></div>
-    <div class="st"><div class="l">Call Notional</div><div class="v">${fmtUSD(DATA.callNotionalTotal, true)}</div><div class="n">13F notional, not delta</div></div>
-    <div class="st"><div class="l">Put Notional</div><div class="v">${fmtUSD(DATA.putNotionalTotal, true)}</div><div class="n">includes index and single-name</div></div>
-    <div class="st"><div class="l">True Long</div><div class="v">${fmtUSD(DATA.concentration.fullBookTotal, true)}</div><div class="n">common + calls \u2212 puts \u00b7 hedges out</div></div>
-    <div class="st"><div class="l">Index Hedge</div><div class="v">${fmtPct(DATA.hedge.indexHedgeRatioPct)}</div><div class="n">broad-market only</div>${hedgeBarHtml(DATA.hedge.indexHedgeRatioPct)}</div>
-  </div>
-  ${renderHedgeTeaser()}
-  <div class="card">
-    <div class="card-head"><span class="card-title">Exposure Blotter</span><span class="card-note">full universe \u00b7 filed / quarter-end</span></div>
-    <div class="card-body">
-      <div class="table-controls">
-        <input class="search-input" id="exp-search" placeholder="Search issuer, ticker, CUSIP, GICS\u2026" value="${esc(state.expSearch)}">
-      </div>
-      <table><thead><tr>
-        <th class="l" data-exp-k="issuer">Issuer</th>
-        <th class="l" data-exp-k="gicsIndustry">GICS L3</th>
-        <th data-exp-k="commonValue">Filed Common</th>
-        <th data-exp-k="callValue">Call Notional</th>
-        <th data-exp-k="putValue">Puts</th>
-        <th data-exp-k="trueLongExposure">True Long</th>
-        <th data-exp-k="pctOfCommonBook">% Common Book</th>
-        <th data-exp-k="optionToCommonRatioPct">Call Overlay</th>
-      </tr></thead>
-      <tbody id="exp-tbody">${exposureRowsHtml()}</tbody></table>
-    </div>
-  </div>
-  ${renderSectorConcentration()}
-  ${DATA.families.length ? `<div class="card"><div class="card-head"><span class="card-title">Related Security Families</span></div><div class="card-body">${DATA.families.map(fam => `<div class="clickable-name" data-open-company="${esc(fam.issuerNameNormalized)}">${esc(fam.issuerNameNormalized)} (${fam.cusipCount} CUSIPs)</div>`).join('')}</div></div>` : ''}
-  `;
+  const hedge = DATA.hedge || {};
+  return '<div class="band">' +
+    '<div class="band-cell"><div class="band-label">Filed Common / Long-class</div><div class="band-value">' + fmtUSD(DATA.commonBookTotal, true) + '</div></div>' +
+    '<div class="band-cell"><div class="band-label">Call Notional</div><div class="band-value">' + fmtUSD(DATA.callNotionalTotal, true) + '</div></div>' +
+    '<div class="band-cell"><div class="band-label">Put Notional</div><div class="band-value">' + fmtUSD(DATA.putNotionalTotal, true) + '</div></div>' +
+    '<div class="band-cell" tabindex="0" data-help="totalExposure"><div class="band-label">Total Exposure</div><div class="band-value">' + fmtUSD(DATA.concentration.fullBookTotal, true) + '</div></div>' +
+    '<div class="band-cell" tabindex="0" data-help="indexHedge"><div class="band-label">Index Hedge</div><div class="band-value">' + fmtPct(hedge.indexHedgeRatioPct) + '</div></div>' +
+    '</div><div class="split-65">' + renderExposureTable() + '<div class="exp-side">' + renderHedgePanel() + renderSectorHedgeLine() + '</div></div>' +
+    renderSectorConcentration();
+}
+
+function renderExposureTable() {
+  const extra = [];
+  if (state.expCols.overlay) extra.push('overlay');
+  if (state.expCols.gics) extra.push('gics');
+  return '<div class="panel"><div class="panel-h"><span class="panel-title">Exposure</span><span class="panel-note">Index hedges shown separately</span></div>' +
+    '<div class="toolbar"><input class="search exp" id="exp-search" placeholder="Search security, ticker or CUSIP" value="' + esc(state.expSearch) + '">' +
+    '<span style="flex:1"></span><div class="more-wrap"><button type="button" class="quiet" data-more="exp">Columns</button>' +
+    (state.more==='exp' ? '<div class="menu right"><label><input type="checkbox" data-exp-col="overlay"' + (state.expCols.overlay?' checked':'') + '> Call Overlay</label><label><input type="checkbox" data-exp-col="gics"' + (state.expCols.gics?' checked':'') + '> GICS</label></div>' : '') +
+    '</div></div><div class="table-clip exp" data-scroll="exp"><table class="exp-table"><colgroup><col style="width:290px"><col style="width:120px"><col style="width:100px"><col style="width:80px"><col style="width:144px"><col style="width:128px">' + (state.expCols.overlay ? '<col style="width:120px">' : '') + (state.expCols.gics ? '<col style="width:160px">' : '') + '</colgroup><thead><tr>' +
+    '<th class="l' + (state.expSortKey==='issuer'?' sorted':'') + '" data-exp-k="issuer">Security' + sortMark(state.expSortKey==='issuer') + '</th>' +
+    '<th' + (state.expSortKey==='commonValue'?' class="sorted"':'') + ' data-exp-k="commonValue">Filed Common' + sortMark(state.expSortKey==='commonValue') + '</th>' +
+    '<th' + (state.expSortKey==='callValue'?' class="sorted"':'') + ' data-exp-k="callValue">Calls' + sortMark(state.expSortKey==='callValue') + '</th>' +
+    '<th' + (state.expSortKey==='putValue'?' class="sorted"':'') + ' data-exp-k="putValue">Puts' + sortMark(state.expSortKey==='putValue') + '</th>' +
+    '<th' + (state.expSortKey==='trueLongExposure'?' class="sorted"':'') + ' data-exp-k="trueLongExposure">Total Exposure' + sortMark(state.expSortKey==='trueLongExposure') + '</th>' +
+    '<th' + (state.expSortKey==='pctOfCommonBook'?' class="sorted"':'') + ' data-exp-k="pctOfCommonBook" data-help="pctCommon">% Common Book' + sortMark(state.expSortKey==='pctOfCommonBook') + '</th>' +
+    (state.expCols.overlay ? '<th' + (state.expSortKey==='optionToCommonRatioPct'?' class="sorted"':'') + ' data-exp-k="optionToCommonRatioPct" data-help="callOverlay">Call Overlay' + sortMark(state.expSortKey==='optionToCommonRatioPct') + '</th>' : '') +
+    (state.expCols.gics ? '<th class="l' + (state.expSortKey==='gicsIndustry'?' sorted':'') + '" data-exp-k="gicsIndustry">GICS' + sortMark(state.expSortKey==='gicsIndustry') + '</th>' : '') +
+    '</tr></thead><tbody id="exp-tbody">' + exposureRowsHtml() + '</tbody></table></div>' +
+    '<div class="panel-foot"><span>' + filteredExposures().length + ' exposures \u00b7 Filed / quarter-end \u00b7 Calls are not delta-adjusted</span></div></div>';
 }
 
 function filteredExposures() {
@@ -617,18 +1005,45 @@ function filteredExposures() {
   });
   return rows;
 }
-
 function exposureRowsHtml() {
-  return filteredExposures().map(e => `<tr class="clickable" data-open-company="${esc(e.issuerKey || e.issuer)}">
-    <td class="l issuer">${e.ticker?esc(e.ticker)+' ':''}${esc(e.issuer)}${e.isCallOnly?' <span class="badge bp">Options-only</span>':''}</td>
-    <td class="l">${esc(e.gicsIndustry || '\u2014')}</td>
-    <td>${fmtUSD(e.commonValue,true)}</td>
-    <td class="opt">${fmtUSD(e.callValue,true)}</td>
-    <td>${fmtUSD(e.putValue,true)}</td>
-    <td>${fmtUSD(e.trueLongExposure,true)}</td>
-    <td>${e.isCallOnly ? '<span class="badge bp">Options-only</span>' : fmtPct(e.pctOfCommonBook, 2)}</td>
-    <td>${e.optionToCommonRatioPct!==null?e.optionToCommonRatioPct.toFixed(0)+'%':'\u2014'}</td>
-  </tr>`).join('');
+  return filteredExposures().map(e => {
+    const key = 'exp-' + e.cusip;
+    const pct = e.isCallOnly ? '<span class="badge der">Options-only</span>' : fmtPct(e.pctOfCommonBook, 2);
+    return '<tr class="clickable' + (state.selectedKey===key?' sel':'') + '" tabindex="0" data-row-key="' + esc(key) + '" data-open-company="' + esc(e.issuerKey || e.issuer) + '">' +
+      '<td class="l">' + secCell(e.ticker, e.issuer, e.isCallOnly ? ' <span class="badge der">Options-only</span>' : '') + '</td>' +
+      '<td>' + money(e.commonValue, true, e.commonValue ? '' : 'z') + '</td>' +
+      '<td>' + callMoney(e.callValue) + '</td>' +
+      '<td>' + money(e.putValue, true, e.putValue ? '' : 'z') + '</td>' +
+      '<td>' + money(e.trueLongExposure, true) + '</td>' +
+      '<td>' + pct + '</td>' +
+      (state.expCols.overlay ? '<td>' + (e.optionToCommonRatioPct!=null ? e.optionToCommonRatioPct.toFixed(0)+'%' : dash()) + '</td>' : '') +
+      (state.expCols.gics ? '<td class="l">' + esc(e.gicsIndustry || '\u2014') + '</td>' : '') +
+      '</tr>';
+  }).join('');
+}
+
+function renderHedgePanel() {
+  const hedge = DATA.hedge || {};
+  const idx = (DATA.hedgeDetail && DATA.hedgeDetail.indexHedgePositions) || [];
+  const shown = idx.slice(0, 4);
+  const extra = idx.length - shown.length;
+  return '<div class="panel"><div class="panel-h"><span class="panel-title">Index Hedge</span><span class="panel-note">Broad-market only</span></div>' +
+    '<div class="hedge-ratio" data-help="indexHedge">' + fmtPct(hedge.indexHedgeRatioPct) + '</div>' +
+    '<div class="stat-row"><span class="stat-label">Index put notional</span><span class="stat-value">' + fmtUSD(hedge.indexPutNotional, true) + '</span></div>' +
+    '<div class="stat-row"><span class="stat-label">Long-book denominator</span><span class="stat-value">' + fmtUSD(hedge.longBook, true) + '</span></div>' +
+    '<div class="thin"></div>' +
+    shown.map(p => '<div class="const-row"><span class="tk">' + esc(p.ticker || '\u2014') + '</span><span class="nm z">' + esc(p.issuer) + '</span><span class="stat-value" style="margin-left:auto">' + fmtUSD(p.value, true) + '</span></div>').join('') +
+    (extra > 0 ? '<button type="button" class="quiet" style="margin:8px 16px" data-toggle="allIdx">View all (' + idx.length + ')</button>' +
+      (state.open.allIdx ? idx.slice(4).map(p => '<div class="const-row"><span class="tk">' + esc(p.ticker || '\u2014') + '</span><span class="nm z">' + esc(p.issuer) + '</span><span class="stat-value" style="margin-left:auto">' + fmtUSD(p.value, true) + '</span></div>').join('') : '') : '') +
+    '<div class="hedge-foot">Notional ratio \u00b7 not delta-adjusted</div></div>';
+}
+
+function renderSectorHedgeLine() {
+  const det = DATA.hedgeDetail || {};
+  const sec = det.sectorHedgePositions || [];
+  if (!sec.length) return '<div class="none-line">Sector / other hedges: none reported</div>';
+  return '<button type="button" class="disc" data-toggle="sectorH" aria-expanded="' + state.open.sectorH + '" style="margin-top:16px"><span class="disc-chev">\u203a</span><span class="disc-label">Sector / other hedges</span><span class="disc-meta">' + fmtUSD(det.sectorHedgeTotal, true) + ' \u00b7 excluded from the index ratio</span></button>' +
+    (state.open.sectorH ? '<div class="disc-body">' + sec.map(p => '<div class="stat-row"><span class="stat-label">' + esc(p.ticker || '') + ' ' + esc(p.issuer) + ' \u00b7 ' + esc(p.category) + '</span><span class="stat-value">' + fmtUSD(p.value, true) + '</span></div>').join('') + '</div>' : '');
 }
 
 function renderSectorConcentration() {
@@ -639,116 +1054,124 @@ function renderSectorConcentration() {
   const rest = classified.slice(10);
   const otherTotal = rest.reduce((a, s) => a + s.trueLongExposure, 0);
   const otherPct = rest.reduce((a, s) => a + (s.pctFullBook || 0), 0);
-  const otherCount = rest.reduce((a, s) => a + s.positionCount, 0);
-  const maxPct = top.length ? top[0].pctFullBook : 0;
-  return `
-  <div class="card">
-    <div class="card-head">
-      <span class="card-title">Current-Quarter Sector Concentration</span>
-      <span class="card-note">
-        <button class="basis-btn ${state.sectorLevel==='industry'?'on':''}" data-sector-level="industry">Industry</button>
-        <button class="basis-btn ${state.sectorLevel==='subIndustry'?'on':''}" data-sector-level="subIndustry">Sub-Industry</button>
-        true-long basis
-      </span>
-    </div>
-    <div class="card-body">
-      ${top.map(s => `<div style="margin-bottom:9px">
-        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
-          <span class="issuer">${esc(s.sector)}</span>
-          <span class="num">${fmtPct(s.pctFullBook,2)} \u00b7 ${fmtUSD(s.trueLongExposure,true)} \u00b7 ${s.positionCount} pos</span>
-        </div>
-        <div class="hedge-bar-track"><div class="hedge-bar-fill" style="width:${maxPct?(s.pctFullBook/maxPct*100):0}%"></div></div>
-      </div>`).join('')}
-      ${rest.length ? `<div class="stat-row"><span class="stat-label">Other (${rest.length})</span><span class="stat-value">${fmtPct(otherPct,2)} \u00b7 ${fmtUSD(otherTotal,true)} \u00b7 ${otherCount} pos</span></div>` : ''}
-      ${unclassified ? `<div class="stat-row" style="color:var(--amb)"><span class="stat-label" style="color:var(--amb)">Unclassified</span><span class="stat-value">${fmtPct(unclassified.pctFullBook,2)} \u00b7 ${fmtUSD(unclassified.trueLongExposure,true)} \u00b7 ${unclassified.positionCount} pos</span></div>` : ''}
-    </div>
-    <div class="section-note">True-long with hedges excluded. Individual position weights use Common Book \u2014 these two denominators are intentionally different.</div>
-  </div>`;
+  const maxPct = top.length ? (top[0].pctFullBook || 0) : 0;
+  function width(pct) { return maxPct ? (pct || 0) / maxPct * 100 : 0; }
+  return '<div class="panel rank-panel"><div class="panel-h"><span class="panel-title">Industry concentration</span>' +
+    '<span style="display:flex;gap:8px;flex:0 0 auto">' +
+    '<button type="button" class="seg' + (state.sectorLevel==='industry'?' on':'') + '" data-sector-level="industry">Industry</button>' +
+    '<button type="button" class="seg' + (state.sectorLevel==='subIndustry'?' on':'') + '" data-sector-level="subIndustry">Sub-industry</button></span></div>' +
+    '<div class="rank-body">' +
+    top.map(s => rankBarRow({
+      name: s.sector,
+      widthPct: width(s.pctFullBook),
+      pct: fmtPct(s.pctFullBook, 2),
+      usd: fmtUSD(s.trueLongExposure, true),
+    })).join('') +
+    (rest.length ? rankBarRow({
+      name: 'Other (' + rest.length + ')',
+      widthPct: width(otherPct),
+      pct: fmtPct(otherPct, 2),
+      usd: fmtUSD(otherTotal, true),
+      muted: true,
+    }) : '') +
+    (unclassified ? rankBarRow({
+      name: 'Unclassified',
+      widthPct: width(unclassified.pctFullBook),
+      pct: fmtPct(unclassified.pctFullBook, 2),
+      usd: fmtUSD(unclassified.trueLongExposure, true),
+      muted: true,
+    }) : '') +
+    '<div class="rank-note">Total Exposure with hedges excluded. Individual position weights use Common Book \u2014 these two denominators are intentionally different.</div>' +
+    '</div></div>';
+}
+
+function slowestModeled(liq) {
+  let best = null;
+  for (const p of liq) {
+    const d = p.daysToLiquidate_20d;
+    if (d === null || d === undefined) continue;
+    if (!best || d > best.daysToLiquidate_20d) best = p;
+  }
+  return best;
+}
+
+function renderLiqControls() {
+  const showWin = state.liqView === 'map';
+  return '<div class="ctrl-row"><div class="ctrl-group"><span class="ctrl-label">Participation</span>' +
+    DATA.participationRates.map(r => '<button type="button" class="seg adv' + (state.rate===String(r)?' on':'') + '" data-rate="' + r + '">' + (r*100).toFixed(0) + '%</button>').join('') +
+    '</div><div class="ctrl-group"><span class="ctrl-label">Position basis</span>' +
+    '<button type="button" class="seg basis-a' + (state.basis==='common'?' on':'') + '" data-basis="common">Common</button>' +
+    '<button type="button" class="seg basis-b' + (state.basis==='common_plus_calls'?' on':'') + '" data-basis="common_plus_calls">Common + calls</button></div>' +
+    (showWin ? '<div class="ctrl-group" style="margin-left:auto;border-left:0;padding-left:0"><span class="ctrl-label">ADV window</span>' +
+      ['20d','3m','both'].map(w => '<button type="button" class="seg win' + (state.curveWindow===w?' on':'') + '" data-curve="' + w + '">' + (w==='both'?'Both':w==='3m'?'3m':'20d') + '</button>').join('') + '</div>' : '') +
+    '</div>';
 }
 
 function renderLiquidity() {
   const r = currentRateData();
-  return `
-  <div class="card">
-    <div class="card-head">
-      <span class="card-title">Portfolio Liquidation Curve</span>
-      <span class="card-note">
-        ADV-Modeled Securities \u00b7
-        <button class="${state.curveWindow==='20d'?'on':''}" data-curve="20d">20d</button>
-        <button class="${state.curveWindow==='3m'?'on':''}" data-curve="3m">3m</button>
-        <button class="${state.curveWindow==='both'?'on':''}" data-curve="both">Both</button>
-      </span>
-    </div>
-    <div class="card-body"><div class="chartwrap" id="curve-chart"></div></div>
-    <div class="section-note">Shaded gap = ${fmtPct(r.curve20d.unmodeledPctOfBook)} of the full filing book with no ADV exit path (options, warrants, uncovered names). Options and warrants are excluded from the ADV liquidity model \u2014 not missing zeros.</div>
-  </div>
-  <div class="two-col">
-    <div class="card">
-      <div class="card-head"><span class="card-title">Days-to-Exit Buckets</span></div>
-      <div class="card-body">
-        <div class="two-col">
-          <div><div class="card-note" style="margin-bottom:8px">20-day ADV</div>${r.bucket20d.buckets.map(b => `<div class="stat-row"><span class="stat-label">\u2265 ${b.daysThreshold}d</span><span class="stat-value">${fmtPct(b.pctOfBook)}</span></div>`).join('')}</div>
-          <div><div class="card-note" style="margin-bottom:8px">3-month ADV</div>${r.bucket3m.buckets.map(b => `<div class="stat-row"><span class="stat-label">\u2265 ${b.daysThreshold}d</span><span class="stat-value">${fmtPct(b.pctOfBook)}</span></div>`).join('')}</div>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head"><span class="card-title">Liquidity \u00d7 Concentration</span><span class="card-note">bubble size = filed common / long-class value</span></div>
-      <div class="card-body"><div class="chartwrap" id="matrix-chart"></div>
-        <div class="matrix-legend">Red = concentrated and illiquid. Amber = threshold proximity or compounding. Upper-right is the danger quadrant.</div>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-head"><span class="card-title">Excluded from ADV Liquidity Model</span><span class="card-note">${r.excluded.length} excluded \u00b7 ${r.liquidity.length} ADV-modeled securities on Positions</span></div>
-    <div class="card-body">
-      <table><thead><tr><th class="l">Excluded instrument</th><th class="l">Class</th><th class="l">Reason</th><th>Filed value</th></tr></thead>
-      <tbody>${r.excluded.map(e => `<tr class="clickable" data-open-leg="${e.cusip}|${e.instrumentClass}">
-        <td class="l issuer">${esc(e.issuer)}</td>
-        <td class="l">${esc(e.instrumentClass)}</td>
-        <td class="l"><span class="badge ba">${esc(e.reason || 'Excluded from ADV liquidity model')}</span></td>
-        <td>${e.filedValue != null ? fmtUSD(e.filedValue,true) : '\u2014'}</td>
-      </tr>`).join('')}</tbody></table>
-    </div>
-  </div>`;
+  const liq = r.liquidity || [];
+  const excl = r.excluded || [];
+  const modeled = liq.length;
+  const excludedN = excl.length;
+  const denom = modeled + excludedN;
+  const conc = liveConc();
+  const slow = slowestModeled(liq);
+  const modeledVal = (r.curve20d && r.curve20d.modeledValue);
+  return renderLiqControls() +
+    '<div class="tiles-4">' +
+    tile({ compact: true, label: 'ADV-Modeled Book', value: fmtUSD(modeledVal, true), qual: 'Verified value \u00b7 ' + modeled + ' instruments', help: 'modeledBook' }) +
+    tile({ compact: true, label: 'Concentrated + Illiquid', value: conc.length + ' position' + (conc.length===1?'':'s'), qual: 'Ownership proximity + compounding', help: 'concIlliquid', go: 'liq', goExtra: 'concilliq', tone: conc.length ? 'crit' : '' }) +
+    tile({ compact: true, label: 'Slowest Modeled Exit', value: slow ? fmtDays(slow.daysToLiquidate_20d) : '\u2014', qual: slow ? ((slow.ticker || slow.issuer) + ' \u00b7 20d ADV') : 'No resolved DTL', help: 'slowest', go: 'liq' }) +
+    tile({ compact: true, label: 'Coverage', value: modeled + ' / ' + denom, qual: 'Instrument count \u00b7 ' + excludedN + ' excluded', help: 'coverage' }) +
+    '</div><div class="view-row"><div class="view-toggle" role="group" aria-label="View">' +
+    '<button type="button" class="seg view-a' + (state.liqView==='blotter'?' on':'') + '" data-liq-view="blotter">Blotter</button>' +
+    '<button type="button" class="seg view-b' + (state.liqView==='map'?' on':'') + '" data-liq-view="map">Liquidity Map</button></div>' +
+    '<span class="ctrl-spacer"></span><span class="panel-note">' + esc(assumptionLabel()) + '</span></div>' +
+    (state.liqView === 'map' ? renderLiquidityMap(r) : renderBlotter(r)) +
+    '<button type="button" class="disc" data-toggle="excl" aria-expanded="' + state.open.excl + '"><span class="disc-chev">\u203a</span><span class="disc-label">Excluded from ADV Liquidity Model \u00b7 ' + excludedN + ' instruments</span><span class="disc-meta">Count / filed-value breakdown on expand</span></button>' +
+    (state.open.excl ? '<div class="disc-body">' + renderExclusions(excl) + '</div>' : '');
 }
 
-function renderPositions() {
-  const r = currentRateData();
-  const rows = filteredPositionRows();
-  return `<div class="card">
-    <div class="card-head"><span class="card-title">ADV-Modeled Securities</span><span class="card-note">${rows.length} shown of ${r.liquidity.length} modeled \u00b7 ${r.excluded.length} excluded \u00b7 ${DATA.closedPositions.length} closed listed on Changes</span></div>
-    <div class="card-body">
-      <div class="table-controls">
-        <input class="search-input" id="pos-search" placeholder="Ticker, issuer, CUSIP, GICS\u2026" value="${esc(state.search)}">
-        <div class="filter-chip ${state.filter==='all'?'on':''}" data-filter="all">All</div>
-        <div class="filter-chip ${state.filter==='flagged'?'on':''}" data-filter="flagged">Compounding</div>
-        <div class="filter-chip ${state.filter==='threshold'?'on':''}" data-filter="threshold">Threshold</div>
-        <div class="filter-chip ${state.filter==='concilliq'?'on':''}" data-filter="concilliq">Conc. + illiquid</div>
-        ${DATA.qoqAvailable ? `<div class="filter-chip ${state.filter==='new'?'on':''}" data-filter="new">New</div>
-        <div class="filter-chip ${state.filter==='increased'?'on':''}" data-filter="increased">Increased</div>
-        <div class="filter-chip ${state.filter==='decreased'?'on':''}" data-filter="decreased">Decreased</div>` : ''}
-        ${DATA.chainAvailable ? `<div class="filter-chip ${state.filter==='reentered'?'on':''}" data-filter="reentered">Reentered</div>` : ''}
-      </div>
-      <table><thead><tr>
-        <th class="l" data-k="ticker">Ticker</th>
-        <th class="l" data-k="issuer">Issuer</th>
-        <th class="l" data-k="gicsIndustry">GICS</th>
-        <th data-k="shares">Shares</th>
-        <th data-k="filedValue">Filed value</th>
-        <th data-k="verifiedValue">Verified value</th>
-        <th data-k="pctOfCommonBook">% Common Book</th>
-        <th data-k="adv_20d">ADV 20d</th>
-        <th data-k="sharesOutstanding">SO</th>
-        <th data-k="daysToLiquidate_20d">Days 20d</th>
-        <th data-k="daysToLiquidate_3m">Days 3m</th>
-        <th data-k="pctSharesOutstanding">% SO</th>
-        ${DATA.qoqAvailable ? '<th>QoQ</th><th>Shares \u0394</th>' : ''}
-      </tr></thead>
-      <tbody id="pos-tbody">${positionRowsHtml(rows)}</tbody></table>
-    </div>
-    <div class="section-note">Filed value is quarter-end. Verified value uses Bloomberg PX_LAST. % of Common Book uses filed commonValue / sum(commonValue), never verified value. Options/warrants are not in this table \u2014 they are excluded from the ADV liquidity model.</div>
-  </div>`;
+function primaryFlag(p) {
+  if (p.concentratedAndIlliquid) return { text: 'Conc. + illiquid', cls: 'crit', row: 'row-crit' };
+  if (p.thresholdProximityFlag || p.compoundingIlliquidity) return { text: 'Review', cls: 'review', row: 'row-review' };
+  if (p.liquidityOverrideReason) return { text: 'Override', cls: 'neutral', row: '' };
+  if (p.reenteredAfterClose) return { text: 'Re-entry', cls: 'neutral', row: '' };
+  return { text: '\u2014', cls: '', row: '' };
+}
+
+function renderBlotter(r) {
+  const cols = state.posCols;
+  return '<div class="panel"><div class="panel-h"><span class="panel-title">ADV-Modeled Securities</span><span class="panel-note">Both ADV windows shown</span></div>' +
+    '<div class="toolbar"><input class="search" id="pos-search" placeholder="Search security, ticker or CUSIP" value="' + esc(state.search) + '">' +
+    [['all','All'],['flagged','Compounding'],['threshold','Threshold'],['concilliq','Conc. + illiquid']].map(([k,l]) => '<button type="button" class="seg' + (state.filter===k?' on':'') + '" data-filter="' + k + '">' + l + '</button>').join('') +
+    '<div class="more-wrap"><button type="button" class="seg' + (state.more==='pos'?' on':'') + '" data-more="pos">More</button>' +
+    (state.more==='pos' ? '<div class="menu">' +
+      (DATA.qoqAvailable ? '<button type="button" class="menu-item" data-filter="new">New</button><button type="button" class="menu-item" data-filter="increased">Increased</button><button type="button" class="menu-item" data-filter="decreased">Decreased</button>' : '') +
+      (DATA.chainAvailable ? '<button type="button" class="menu-item" data-filter="reentered">Re-entry</button>' : '') +
+      '<label><input type="checkbox" data-pos-col="shares"' + (cols.shares?' checked':'') + '> Shares</label>' +
+      '<label><input type="checkbox" data-pos-col="verified"' + (cols.verified?' checked':'') + '> Verified value</label>' +
+      '<label><input type="checkbox" data-pos-col="adv"' + (cols.adv?' checked':'') + '> ADV 20d</label>' +
+      '<label><input type="checkbox" data-pos-col="so"' + (cols.so?' checked':'') + '> Shares outstanding</label>' +
+      '<label><input type="checkbox" data-pos-col="gics"' + (cols.gics?' checked':'') + '> GICS</label>' +
+      (DATA.qoqAvailable ? '<label><input type="checkbox" data-pos-col="qoq"' + (cols.qoq?' checked':'') + '> QoQ status</label>' : '') +
+      '</div>' : '') + '</div></div>' +
+    '<div class="table-clip pos" data-scroll="pos"><table class="pos-table"><colgroup><col style="width:452px"><col style="width:152px"><col style="width:160px"><col style="width:136px"><col style="width:136px"><col style="width:132px"><col style="width:192px"></colgroup><thead><tr>' +
+    '<th class="l' + (state.sortKey==='issuer'||state.sortKey==='ticker'?' sorted':'') + '" data-k="issuer">Security' + sortMark(state.sortKey==='issuer'||state.sortKey==='ticker') + '</th>' +
+    '<th' + (state.sortKey==='filedValue'?' class="sorted"':'') + ' data-k="filedValue">Filed Value' + sortMark(state.sortKey==='filedValue') + '</th>' +
+    '<th' + (state.sortKey==='pctOfCommonBook'?' class="sorted"':'') + ' data-k="pctOfCommonBook" data-help="pctCommon">% Common Book' + sortMark(state.sortKey==='pctOfCommonBook') + '</th>' +
+    '<th' + (state.sortKey==='daysToLiquidate_20d'?' class="sorted"':'') + ' data-k="daysToLiquidate_20d" data-help="dtl">DTL 20d' + sortMark(state.sortKey==='daysToLiquidate_20d') + '</th>' +
+    '<th' + (state.sortKey==='daysToLiquidate_3m'?' class="sorted"':'') + ' data-k="daysToLiquidate_3m" data-help="dtl">DTL 3m' + sortMark(state.sortKey==='daysToLiquidate_3m') + '</th>' +
+    '<th' + (state.sortKey==='pctSharesOutstanding'?' class="sorted"':'') + ' data-k="pctSharesOutstanding" data-help="ownership">% SO' + sortMark(state.sortKey==='pctSharesOutstanding') + '</th>' +
+    '<th>Flags</th>' +
+    (cols.shares ? '<th' + (state.sortKey==='shares'?' class="sorted"':'') + ' data-k="shares">Shares</th>' : '') +
+    (cols.verified ? '<th' + (state.sortKey==='verifiedValue'?' class="sorted"':'') + ' data-k="verifiedValue">Verified</th>' : '') +
+    (cols.adv ? '<th' + (state.sortKey==='adv_20d'?' class="sorted"':'') + ' data-k="adv_20d">ADV 20d</th>' : '') +
+    (cols.so ? '<th' + (state.sortKey==='sharesOutstanding'?' class="sorted"':'') + ' data-k="sharesOutstanding">SO</th>' : '') +
+    (cols.gics ? '<th class="l' + (state.sortKey==='gicsIndustry'?' sorted':'') + '" data-k="gicsIndustry">GICS</th>' : '') +
+    (cols.qoq ? '<th class="l">QoQ</th>' : '') +
+    '</tr></thead><tbody id="pos-tbody">' + positionRowsHtml(filteredPositionRows()) + '</tbody></table></div>' +
+    '<div class="panel-foot"><span>' + filteredPositionRows().length + ' modeled instruments \u00b7 Filed values and verified values remain distinct</span></div></div>';
 }
 
 function filteredPositionRows() {
@@ -774,151 +1197,351 @@ function filteredPositionRows() {
   });
   return rows;
 }
-
 function positionRowsHtml(rows) {
-  return rows.map(p => `<tr class="clickable ${p.concentratedAndIlliquid?'row-crit':p.compoundingIlliquidity?'row-warn':''}" data-open-leg="${p.cusip}|${p.instrumentClass}">
-    <td class="l issuer">${p.ticker ? esc(p.ticker) : '<span class="z">\u2014</span>'}</td>
-    <td class="l issuer">${esc(p.issuer)}${p.thresholdProximityFlag ? ` <span class="badge ba">${p.thresholdProximityFlag==='WARRANT_BLOCKER_RANGE'?'4.5\u20135% blocker':'Sec. 16'}</span>` : ''}${p.reenteredAfterClose ? ' <span class="badge bp">reentered</span>' : ''}${p.liquidityOverrideReason ? ' <span class="badge bg">cash claim</span>' : ''}</td>
-    <td class="l">${esc(p.gicsIndustry || '\u2014')}</td>
-    <td>${p.shares.toLocaleString()}</td>
-    <td>${p.filedValue != null ? fmtUSD(p.filedValue, true) : '\u2014'}</td>
-    <td>${fmtUSD(p.verifiedValue, true)}</td>
-    <td>${p.pctOfCommonBook !== null && p.pctOfCommonBook !== undefined ? p.pctOfCommonBook.toFixed(2)+'%' : '\u2014'}</td>
-    <td>${p.adv_20d ? Math.round(p.adv_20d).toLocaleString() : '\u2014'}</td>
-    <td>${p.sharesOutstanding ? Math.round(p.sharesOutstanding).toLocaleString() : '\u2014'}</td>
-    <td><span class="badge ${daysBadgeClass(p.daysToLiquidate_20d)}">${fmtDays(p.daysToLiquidate_20d)}</span></td>
-    <td><span class="badge ${daysBadgeClass(p.daysToLiquidate_3m)}">${fmtDays(p.daysToLiquidate_3m)}</span></td>
-    <td class="${p.pctSharesOutstanding>5?'dn':''}">${p.pctSharesOutstanding!==null?p.pctSharesOutstanding.toFixed(2)+'%':'\u2014'}</td>
-    ${DATA.qoqAvailable ? qoqCells(p.qoq) : ''}
-  </tr>`).join('');
+  const cols = state.posCols;
+  if (!rows.length) return '<tr><td colspan="7"><div class="empty">No positions match these filters <button type="button" class="linkish" id="clear-pos">Clear filters</button></div></td></tr>';
+  return rows.map(p => {
+    const key = 'pos-' + sid(p.cusip, p.instrumentClass);
+    const flag = primaryFlag(p);
+    const pct = p.pctOfCommonBook != null ? p.pctOfCommonBook.toFixed(2) + '%' : '\u2014';
+    const so = p.pctSharesOutstanding != null ? p.pctSharesOutstanding.toFixed(2) + '%' : '\u2014';
+    return '<tr class="clickable ' + flag.row + (state.selectedKey===key?' sel':'') + '" tabindex="0" data-row-key="' + esc(key) + '" data-open-leg="' + esc(sid(p.cusip, p.instrumentClass)) + '">' +
+      '<td class="l">' + secCell(p.ticker, p.issuer) + '</td>' +
+      '<td>' + (p.filedValue != null ? money(p.filedValue, true) : dash()) + '</td>' +
+      '<td>' + pct + '</td>' +
+      '<td class="mono">' + fmtDays(p.daysToLiquidate_20d) + '</td>' +
+      '<td class="mono">' + fmtDays(p.daysToLiquidate_3m) + '</td>' +
+      '<td class="mono">' + so + '</td>' +
+      '<td>' + (flag.cls ? '<span class="badge ' + flag.cls + '">' + esc(flag.text) + '</span>' : '<span class="z">\u2014</span>') + '</td>' +
+      (cols.shares ? '<td class="mono">' + (p.shares != null ? p.shares.toLocaleString() : '\u2014') + '</td>' : '') +
+      (cols.verified ? '<td>' + money(p.verifiedValue, true) + '</td>' : '') +
+      (cols.adv ? '<td class="mono">' + (p.adv_20d ? Math.round(p.adv_20d).toLocaleString() : '\u2014') + '</td>' : '') +
+      (cols.so ? '<td class="mono">' + (p.sharesOutstanding ? Math.round(p.sharesOutstanding).toLocaleString() : '\u2014') + '</td>' : '') +
+      (cols.gics ? '<td class="l">' + esc(p.gicsIndustry || '\u2014') + '</td>' : '') +
+      (cols.qoq ? '<td class="l">' + (p.qoq ? esc(p.qoq.status) : '\u2014') + '</td>' : '') +
+      '</tr>';
+  }).join('');
 }
 
-function renderTrends() {
-  const quarters = DATA.trendsOverTime;
-  return `
-  <div class="card">
-    <div class="card-head"><span class="card-title">Key Metrics Over Time</span></div>
-    <div class="card-body">
-      <table><thead><tr><th class="l">Quarter</th><th>Gross Long</th><th>Positions</th><th>Index Hedge</th><th>Top 10 %</th></tr></thead><tbody>
-      ${quarters.map(q => `<tr>
-        <td class="l issuer">${esc(q.quarter)}</td>
-        <td>${fmtUSD(q.grossLong,true)}</td>
-        <td>${q.positionCount}</td>
-        <td>${fmtPct(q.indexHedgeRatioPct)}</td>
-        <td>${fmtPct(q.top10PctOfFullBook,2)}</td>
-      </tr>`).join('')}
-      </tbody></table>
-    </div>
-    <div class="section-note">Gross Long uses each quarter's own SEC values. Sector mix on this tab uses only that quarter's own GICS snapshot when one exists \u2014 current GICS is never copied backward.</div>
-  </div>
-  <div class="card"><div class="card-head"><span class="card-title">Hedge Ratio &amp; Concentration</span></div><div class="card-body"><div class="chartwrap" id="trends-chart"></div></div></div>`;
+function renderExclusions(excl) {
+  if (!excl.length) return '<div class="z">No instruments excluded from the ADV liquidity model.</div>';
+  const byReason = {};
+  excl.forEach(e => {
+    const k = e.reason || 'Excluded from ADV liquidity model';
+    byReason[k] = byReason[k] || { n: 0, value: 0 };
+    byReason[k].n += 1;
+    byReason[k].value += e.filedValue || 0;
+  });
+  return Object.entries(byReason).map(([reason, a]) => '<div class="stat-row"><span class="stat-label">' + esc(reason) + ' \u00b7 ' + a.n + '</span><span class="stat-value">' + fmtUSD(a.value, true) + '</span></div>').join('') +
+    '<table style="margin-top:12px"><thead><tr><th class="l">Excluded instrument</th><th class="l">Class</th><th class="l">Reason</th><th>Filed value</th></tr></thead><tbody>' +
+    excl.map(e => '<tr class="clickable" data-open-leg="' + esc(sid(e.cusip, e.instrumentClass)) + '"><td class="l">' + secCell(e.ticker, e.issuer) + '</td><td class="l">' + esc(e.instrumentClass) + '</td><td class="l"><span class="badge neutral">Excluded</span> ' + esc(e.reason || '') + '</td><td>' + (e.filedValue != null ? fmtUSD(e.filedValue, true) : '\u2014') + '</td></tr>').join('') +
+    '</tbody></table>';
+}
+
+function renderLiquidityMap(r) {
+  const b20 = (r.bucket20d && r.bucket20d.buckets) || [];
+  const b3 = (r.bucket3m && r.bucket3m.buckets) || [];
+  const n = Math.max(b20.length, b3.length);
+  const gap = (r.curve20d && r.curve20d.unmodeledPctOfBook);
+  const winNote = state.curveWindow === 'both' ? 'Full filing book \u00b7 20d and 3m' : (state.curveWindow === '3m' ? 'Full filing book \u00b7 3m ADV' : 'Full filing book \u00b7 20d ADV');
+  return '<div class="panel"><div class="panel-h"><span class="panel-title">Portfolio Liquidation Curve</span><span class="panel-note">' + esc(winNote) + '</span></div>' +
+    '<div class="card-pad" style="padding:8px 16px 16px"><div class="chartwrap chart-curve" id="curve-chart"></div></div></div>' +
+    '<div class="split-map"><div class="panel"><div class="panel-h"><span class="panel-title">Liquidity \u00d7 Concentration</span><span class="panel-note">Bubble size: filed position value</span></div>' +
+    '<div style="padding:8px 16px 0"><div class="legend"><span><i class="swatch" style="background:var(--blue)"></i>Other</span><span><i class="swatch" style="background:var(--review)"></i>Review</span><span><i class="swatch" style="background:var(--crit)"></i>Critical</span></div></div>' +
+    '<div class="card-pad" style="padding:8px 16px 16px"><div class="chartwrap chart-matrix" id="matrix-chart"></div></div></div>' +
+    '<div class="panel"><div class="panel-h"><span class="panel-title">Days-to-Exit Buckets</span><span class="panel-note">Modeled book \u00b7 20d / 3m</span></div><div style="padding:4px 16px 12px">' +
+    '<div class="bucket-head"><span></span><span>20d</span><span>3m</span></div>' +
+    Array.from({length: n}, (_, i) => {
+      const x = b20[i] || { daysThreshold: (b3[i]||{}).daysThreshold, pctOfBook: null };
+      const y = b3[i] || { pctOfBook: null };
+      return '<div class="bucket-row"><span class="bucket-lab">\u2265 ' + x.daysThreshold + ' trading days</span><span>' + fmtPct(x.pctOfBook) + '</span><span>' + fmtPct(y.pctOfBook) + '</span></div>';
+    }).join('') + '</div></div></div>';
+}
+
+function familyForCompany(c) {
+  if (!c) return null;
+  return (DATA.families || []).find(f => f.issuerNameNormalized === c.issuerKey);
+}
+
+function renderDrawer() {
+  if (!state.detail) return '';
+  if (state.detail.kind === 'company') return renderCompanyDrawer(state.detail.issuerKey);
+  return renderLegDrawer(state.detail.cusip, state.detail.instrumentClass);
+}
+
+function renderCompanyDrawer(issuerKey) {
+  const c = findCompany(issuerKey);
+  if (!c) return '';
+  const fam = familyForCompany(c);
+  const overlay = c.optionToCommonRatioPct != null ? c.optionToCommonRatioPct.toFixed(0) + '%' : '\u2014';
+  const pct = c.isCallOnly ? 'Options-only' : fmtPct(c.pctOfCommonBook, 2);
+  return '<div class="backdrop" id="drawer-backdrop"></div><aside class="drawer" id="drawer" role="dialog" aria-modal="true">' +
+    '<div class="drawer-h"><div><div class="drawer-title">' + esc((c.instruments[0] && c.instruments[0].ticker) || '') + (c.instruments[0] && c.instruments[0].ticker ? ' \u00b7 ' : '') + esc(c.issuer) + '</div>' +
+    '<div class="drawer-sub">' + c.instruments.map(i => i.instrumentClass).join(' + ') + ' \u00b7 ' + esc(DATA.currentQuarterLabel || '') + '</div></div>' +
+    '<button type="button" class="drawer-close" id="detail-close">Close \u00d7</button></div>' +
+    '<div class="drawer-b">' +
+    '<div class="d-row"><span>Filed Common</span><span class="v">' + fmtUSD(c.commonValue, true) + '</span></div>' +
+    '<div class="d-row"><span>Call Notional</span><span class="v' + (c.callValue?' opt':'') + '">' + fmtUSD(c.callValue, true) + '</span></div>' +
+    '<div class="d-row"><span>Put Notional</span><span class="v">' + fmtUSD(c.putValue, true) + '</span></div>' +
+    '<div class="d-row"><span>Total Exposure</span><span class="v">' + fmtUSD(c.trueLongExposure, true) + '</span></div>' +
+    '<div class="d-row"><span>% Common Book</span><span class="v">' + pct + '</span></div>' +
+    '<div class="d-row"><span>Call Overlay</span><span class="v">' + overlay + '</span></div>' +
+    '<div class="panel-note" style="margin:12px 0">Index hedges shown separately \u00b7 Calls not delta-adjusted</div>' +
+    '<div class="d-sec">Instruments</div>' +
+    c.instruments.map(inst => {
+      const ex = exclusionFor(inst.cusip, inst.instrumentClass);
+      const exclLabel = (ex && ex.reason) || (inst.excludedFromAdvModel ? 'Excluded from ADV liquidity model' : null);
+      return '<button type="button" class="d-row" data-open-leg="' + esc(sid(inst.cusip, inst.instrumentClass)) + '" style="width:100%;background:none;border-left:0;border-right:0;border-top:0;color:inherit;cursor:pointer">' +
+        '<span>' + esc(inst.instrumentClass) + ' \u00b7 ' + esc(inst.cusip) + (exclLabel ? ' <span class="badge neutral">' + esc(inst.instrumentClass.includes('CALL')||inst.instrumentClass.includes('PUT')||inst.instrumentClass==='WARRANT' ? inst.instrumentClass.split('_')[0] + ' \u00b7 Excluded from ADV model' : exclLabel) + '</span>' : '') + '</span>' +
+        '<span class="v' + (inst.isCall?' opt':'') + '">' + fmtUSD(inst.filedValue, true) + '</span></button>';
+    }).join('') +
+    drawerLiqHistSrc(c.instruments[0], c) +
+    (fam ? '<button type="button" class="disc" data-toggle="dFam" aria-expanded="' + state.open.dFam + '" style="margin-top:12px"><span class="disc-chev">\u203a</span><span class="disc-label">Related Security Families</span></button>' + (state.open.dFam ? '<div class="disc-body">' + esc(fam.issuerNameNormalized) + ' \u00b7 ' + fam.cusipCount + ' CUSIPs</div>' : '') : '') +
+    '</div></aside>';
+}
+
+function renderLegDrawer(cusip, instrumentClass) {
+  const company = (DATA.companies || []).find(c => c.instruments.some(i => i.cusip === cusip && i.instrumentClass === instrumentClass));
+  const inst = company ? company.instruments.find(i => i.cusip === cusip && i.instrumentClass === instrumentClass) : null;
+  const exp = (DATA.exposures || []).find(e => e.cusip === cusip);
+  const r = currentRateData();
+  const liq = (r.liquidity || []).find(p => p.cusip === cusip && p.instrumentClass === instrumentClass);
+  const closed = (DATA.closedPositions || []).find(p => p.cusip === cusip && p.instrumentClass === instrumentClass);
+  const exclusion = exclusionFor(cusip, instrumentClass) || (inst && inst.excludedFromAdvModel ? { reason: 'Excluded from ADV liquidity model' } : null);
+  const title = (inst && company) ? company.issuer : (exp ? exp.issuer : (closed ? closed.issuer : cusip));
+  const ticker = (inst && inst.ticker) || (exp && exp.ticker) || (liq && liq.ticker) || '';
+  const der = isDerivativeLeg(instrumentClass);
+  const notionalLabel = instrumentClass === 'WARRANT' ? 'Warrant notional' : ((instrumentClass || '').toUpperCase().includes('PUT') ? 'Put notional' : 'Call notional');
+  return '<div class="backdrop" id="drawer-backdrop"></div><aside class="drawer" id="drawer" role="dialog" aria-modal="true">' +
+    '<div class="drawer-h"><div><div class="drawer-title">' + (ticker ? esc(ticker) + ' \u00b7 ' : '') + esc(title) + '</div>' +
+    '<div class="drawer-sub">' + esc(instrumentClass) + ' \u00b7 ' + esc(cusip) + ' \u00b7 ' + esc(DATA.currentQuarterLabel || '') + '</div></div>' +
+    '<button type="button" class="drawer-close" id="detail-close">Close \u00d7</button></div>' +
+    '<div class="drawer-b">' +
+    (company && company.instrumentCount > 1 ? '<button type="button" class="quiet" data-open-company="' + esc(company.issuerKey) + '" style="margin-bottom:12px">Company view</button>' : '') +
+    (der ? '<div class="d-row"><span>' + esc(notionalLabel) + '</span><span class="v opt">' + fmtUSD(inst ? inst.filedValue : ((instrumentClass || '').toUpperCase().includes('PUT') ? (exp && exp.putValue) : (exp && exp.callValue))) + '</span></div>' +
+      '<div class="d-row"><span>CUSIP Total Exposure (all legs)</span><span class="v">' + (exp ? fmtUSD(exp.trueLongExposure, true) : '\u2014') + '</span></div>' :
+      (exp ? '<div class="d-row"><span>Filed Common</span><span class="v">' + fmtUSD(exp.commonValue, true) + '</span></div>' +
+        '<div class="d-row"><span>Call Notional</span><span class="v' + (exp.callValue?' opt':'') + '">' + fmtUSD(exp.callValue, true) + '</span></div>' +
+        '<div class="d-row"><span>Put Notional</span><span class="v">' + fmtUSD(exp.putValue, true) + '</span></div>' +
+        '<div class="d-row"><span>Total Exposure</span><span class="v">' + fmtUSD(exp.trueLongExposure, true) + '</span></div>' +
+        '<div class="d-row"><span>% Common Book</span><span class="v">' + (exp.isCallOnly ? '<span class="badge der">Options-only</span>' : fmtPct(exp.pctOfCommonBook, 2)) + '</span></div>' +
+        '<div class="d-row"><span>Call Overlay</span><span class="v">' + (exp.optionToCommonRatioPct!=null ? exp.optionToCommonRatioPct.toFixed(0)+'%' : '\u2014') + '</span></div>' : '')) +
+    (exclusion ? '<div class="d-row"><span>Liquidity model</span><span><span class="badge neutral">Excluded</span></span></div><div class="panel-note">' + esc(exclusion.reason || 'Excluded from ADV liquidity model') + '</div>' : '') +
+    (closed ? '<div class="d-row"><span>Status</span><span class="v">CLOSED \u00b7 prior filed ' + fmtUSD(closed.priorExposure, true) + '</span></div>' : '') +
+    drawerLiqHistSrc(inst || liq, company, liq) +
+    '</div></aside>';
+}
+
+function drawerLiqHistSrc(inst, company, liqRecord) {
+  const r = currentRateData();
+  const liq = liqRecord || (inst && (r.liquidity || []).find(p => p.cusip === inst.cusip && p.instrumentClass === inst.instrumentClass));
+  const chg = inst && (DATA.changesBlotter || []).find(p => p.cusip === inst.cusip && p.instrumentClass === inst.instrumentClass);
+  return '<button type="button" class="disc" data-toggle="dLiq" aria-expanded="' + state.open.dLiq + '" style="margin-top:8px"><span class="disc-chev">\u203a</span><span class="disc-label">Liquidity &amp; ownership</span></button>' +
+    (state.open.dLiq ? '<div class="disc-body">' + (liq ? '<div class="d-row"><span>Verified market value</span><span class="v">' + fmtUSD(liq.verifiedValue) + (liq.verifiedPrice!=null ? ' @ $' + liq.verifiedPrice.toFixed(2) : '') + '</span></div>' +
+      '<div class="d-row"><span>Days to liquidate 20d / 3m</span><span class="v">' + fmtDays(liq.daysToLiquidate_20d) + ' / ' + fmtDays(liq.daysToLiquidate_3m) + '</span></div>' +
+      '<div class="d-row"><span>ADV 20d / % SO</span><span class="v">' + (liq.adv_20d ? liq.adv_20d.toLocaleString() : '\u2014') + ' / ' + (liq.pctSharesOutstanding!=null ? liq.pctSharesOutstanding.toFixed(2)+'%' : '\u2014') + '</span></div>' +
+      (liq.thresholdProximityFlag ? '<div class="d-row"><span>Ownership flag</span><span class="v">' + esc(liq.thresholdProximityFlag) + '</span></div>' : '') +
+      (liq.liquidityOverrideReason ? '<div class="d-row"><span>Override</span><span class="v">' + esc(liq.liquidityOverrideReason) + '</span></div>' : '') :
+      '<div class="z">No standalone ADV / DTL / % SO for this instrument.</div>') + '</div>' : '') +
+    '<button type="button" class="disc" data-toggle="dHist" aria-expanded="' + state.open.dHist + '"><span class="disc-chev">\u203a</span><span class="disc-label">History</span></button>' +
+    (state.open.dHist ? '<div class="disc-body">' + (chg ? '<div class="d-row"><span>Status</span><span class="v">' + esc(chg.status) + '</span></div><div class="d-row"><span>Shares \u0394</span><span class="v">' + fmtSignedPct(chg.sharesChangePct) + '</span></div><div class="d-row"><span>Filed \u0394$</span><span class="v">' + fmtSignedUSD(chg.dollarChange, true) + '</span></div>' + (liq && liq.reenteredAfterClose ? '<div class="d-row"><span>Re-entry</span><span class="v">Yes</span></div>' : '') : '<div class="z">No quarter-over-quarter row for this instrument.</div>') + '</div>' : '') +
+    '<button type="button" class="disc" data-toggle="dSrc" aria-expanded="' + state.open.dSrc + '"><span class="disc-chev">\u203a</span><span class="disc-label">Source data &amp; methodology</span></button>' +
+    (state.open.dSrc ? '<div class="disc-body panel-note">Internal identity is (CUSIP, instrumentClass). Dollar figures are filed / quarter-end unless marked verified. Common Book weight uses filed commonValue / sum(commonValue). Call notional is 13F underlying notional, not premium and not delta-adjusted. Options and warrants have no standalone ADV liquidation estimate.</div>' : '');
 }
 
 function renderFooter() {
-  return `<footer>
-    <strong>Sources.</strong> Position data from Form 13F-HR. Price, volume, and shares outstanding from Bloomberg PX_LAST / VOLUME_AVG_* / EQY_SH_OUT.<br>
-    <strong>Filed vs verified.</strong> ${esc(DATA.asOf.filedValueLabel)}. ${esc(DATA.asOf.verifiedValueLabel)}.<br>
-    <strong>Common Book</strong> is the sum of filed commonValue (pipeline long-class field). Position weight is commonValue / that sum. Call notional is adjacent, never folded into the weight, and is not delta-adjusted.<br>
-    <strong>ADV-Modeled Securities</strong> are COMMON and listed funds. Options and warrants are excluded from the ADV liquidity model \u2014 DTL, % SO, and ADV metrics are not calculated for them.<br>
-    <strong>Days to liquidate</strong> = position shares \u00f7 (share ADV \u00d7 participation). Single-leg estimate; ignores dark liquidity, blocks, and borrow.
-  </footer>`;
+  const body =
+    '<p><strong>Sources.</strong> Position data from Form 13F-HR. Price, volume, and shares outstanding from Bloomberg PX_LAST / VOLUME_AVG_* / EQY_SH_OUT.</p>' +
+    '<p><strong>Filed vs verified.</strong> ' + esc(DATA.asOf.filedValueLabel) + '. ' + esc(DATA.asOf.verifiedValueLabel) + '.</p>' +
+    '<p><strong>Common Book</strong> is the sum of filed commonValue (pipeline long-class field). Position weight is commonValue / that sum. Call notional is adjacent, never folded into the weight, and is not delta-adjusted.</p>' +
+    '<p><strong>ADV-Modeled Securities</strong> are COMMON and listed funds. Options and warrants are excluded from the ADV liquidity model \u2014 DTL, % SO, and ADV metrics are not calculated for them.</p>' +
+    '<p><strong>Days to liquidate</strong> = position shares \u00f7 (share ADV \u00d7 participation). Single-leg estimate; ignores dark liquidity, blocks, and borrow.</p>';
+  return '<footer><div class="foot-line"><span>Sources: Form 13F-HR + Bloomberg market data \u00b7 </span>' +
+    '<button type="button" class="linkish" data-toggle="method" aria-expanded="' + !!state.open.method + '">Methodology &amp; definitions</button></div>' +
+    (state.open.method ? '<div class="foot-body" id="method-body">' + body + '</div>' : '') +
+    '</footer>';
 }
 
-function attachChromeEvents() {
-  document.querySelectorAll('[data-tab]').forEach(el => el.onclick = () => { state.tab = el.dataset.tab; render(); });
-  document.querySelectorAll('[data-rate]').forEach(el => el.onclick = () => { state.rate = el.dataset.rate; render(); });
-  document.querySelectorAll('[data-basis]').forEach(el => el.onclick = () => { state.basis = el.dataset.basis; render(); });
-  document.querySelectorAll('[data-sector-level]').forEach(el => el.onclick = () => { state.sectorLevel = el.dataset.sectorLevel; render(); });
-  document.querySelectorAll('[data-curve]').forEach(el => el.onclick = () => { state.curveWindow = el.dataset.curve; render(); });
-  document.querySelectorAll('[data-industry]').forEach(el => el.onclick = () => { state.selectedIndustry = el.dataset.industry; state.tab = 'changes'; render(); });
+function render() {
+  const pending = state._pendingRestore;
+  if (!pending) snapshotUi();
+  else {
+    state._scroll = pending._scroll || {};
+    state._win = pending._win || [0, 0];
+    state._pendingRestore = null;
+  }
+  const app = document.getElementById('app');
+  document.body.classList.toggle('drawer-open', !!state.detail);
+  app.innerHTML =
+    '<div class="wrap' + (state.detail ? ' inert' : '') + '" ' + (state.detail ? 'aria-hidden="true"' : '') + '>' +
+    renderHeader() + renderTabs() +
+    '<div class="tabpanel' + (state.tab==='overview'?' on':'') + '">' + renderOverview() + '</div>' +
+    '<div class="tabpanel' + (state.tab==='changes'?' on':'') + '">' + renderChanges() + '</div>' +
+    '<div class="tabpanel' + (state.tab==='exp'?' on':'') + '">' + renderExposure() + '</div>' +
+    '<div class="tabpanel' + (state.tab==='liq'?' on':'') + '">' + renderLiquidity() + '</div>' +
+    renderFooter() +
+    '</div>' +
+    renderDrawer() +
+    '<div id="help-tip" class="help" hidden role="tooltip"></div>';
+  attachEvents();
+  restoreUi();
+  drawCharts();
+  if (state.detailJustOpened) {
+    const close = document.getElementById('detail-close');
+    if (close) close.focus();
+    state.detailJustOpened = false;
+  }
+}
+
+function parseGoExtra(raw) {
+  return raw || '';
+}
+
+function attachEvents() {
+  bindHelp(document);
+  document.querySelectorAll('[data-tab]').forEach(el => el.addEventListener('click', () => goTab(el.dataset.tab)));
+  document.querySelectorAll('[data-rate]').forEach(el => el.addEventListener('click', () => { state.rate = el.dataset.rate; render(); }));
+  document.querySelectorAll('[data-basis]').forEach(el => el.addEventListener('click', () => { state.basis = el.dataset.basis; render(); }));
+  document.querySelectorAll('[data-sector-level]').forEach(el => el.addEventListener('click', () => { state.sectorLevel = el.dataset.sectorLevel; render(); }));
+  document.querySelectorAll('[data-curve]').forEach(el => el.addEventListener('click', () => { state.curveWindow = el.dataset.curve; render(); }));
+  document.querySelectorAll('[data-liq-view]').forEach(el => el.addEventListener('click', () => { state.liqView = el.dataset.liqView; render(); }));
+  document.querySelectorAll('[data-toggle]').forEach(el => el.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const k = el.dataset.toggle;
+    state.open[k] = !state.open[k];
+    render();
+  }));
+  document.querySelectorAll('[data-industry]').forEach(el => el.addEventListener('click', () => {
+    state.selectedIndustry = state.selectedIndustry === el.dataset.industry ? null : el.dataset.industry;
+    state.tab = 'changes';
+    state.open.rot = true;
+    render();
+  }));
+  const clearIndustry = document.getElementById('clear-industry');
+  if (clearIndustry) clearIndustry.onclick = () => { state.selectedIndustry = null; render(); };
+  document.querySelectorAll('[data-more]').forEach(el => el.addEventListener('click', ev => {
+    ev.stopPropagation();
+    state.more = state.more === el.dataset.more ? null : el.dataset.more;
+    render();
+  }));
+  document.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => {
+    const dest = el.dataset.go;
+    const extra = parseGoExtra(el.dataset.goExtra);
+    if (dest === 'exp') goTab('exp', extra === 'top10' ? { expSortKey: 'trueLongExposure', expSortDir: -1 } : {});
+    else if (dest === 'liq') {
+      if (extra === 'compounding') goTab('liq', { filter: 'flagged', liqView: 'blotter' });
+      else if (extra === 'concilliq') goTab('liq', { filter: 'concilliq', liqView: 'blotter' });
+      else goTab('liq');
+    } else if (dest === 'changes') {
+      if (['NEW','INCREASED','DECREASED','CLOSED'].includes(extra)) goTab('changes', { chgFilter: extra });
+      else goTab('changes');
+    }
+  }));
+  document.querySelectorAll('[data-attn]').forEach(el => el.addEventListener('click', () => {
+    const cat = attnCats().find(c => c.id === el.dataset.attn);
+    if (cat) cat.go();
+  }));
   const close = document.getElementById('detail-close');
   if (close) close.onclick = closeDetail;
-  document.querySelectorAll('[data-open-company]').forEach(el => el.onclick = (ev) => { ev.stopPropagation(); openCompany(el.dataset.openCompany); });
-  document.querySelectorAll('[data-open-leg]').forEach(el => el.onclick = (ev) => {
+  document.querySelectorAll('[data-open-company]').forEach(el => el.addEventListener('click', ev => {
+    ev.stopPropagation();
+    openCompany(el.dataset.openCompany, el.dataset.rowKey || el.closest('[data-row-key]') && el.closest('[data-row-key]').dataset.rowKey);
+  }));
+  document.querySelectorAll('[data-open-leg]').forEach(el => el.addEventListener('click', ev => {
     ev.stopPropagation();
     const [cusip, cls] = el.dataset.openLeg.split('|');
-    openLeg(cusip, cls);
+    const row = el.closest('[data-row-key]');
+    openLeg(cusip, cls, el.dataset.rowKey || (row && row.dataset.rowKey));
+  }));
+  document.querySelectorAll('tr.clickable').forEach(el => {
+    el.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.click(); }
+    });
   });
-  const clearInd = document.getElementById('clear-industry');
-  if (clearInd) clearInd.onclick = () => { state.selectedIndustry = null; render(); };
-}
+  document.querySelectorAll('[data-exp-col]').forEach(el => el.addEventListener('change', () => {
+    state.expCols[el.dataset.expCol] = el.checked;
+    render();
+  }));
+  document.querySelectorAll('[data-pos-col]').forEach(el => el.addEventListener('change', () => {
+    state.posCols[el.dataset.posCol] = el.checked;
+    render();
+  }));
+  const clearChg = document.getElementById('clear-chg');
+  if (clearChg) clearChg.onclick = () => { state.chgFilter = 'all'; state.chgSearch = ''; state.selectedIndustry = null; render(); };
+  const clearPos = document.getElementById('clear-pos');
+  if (clearPos) clearPos.onclick = () => { state.filter = 'all'; state.search = ''; render(); };
 
-function attachBlotterEvents() {
   const posSearch = document.getElementById('pos-search');
   if (posSearch) {
-    posSearch.oninput = (e) => {
-      state.search = e.target.value;
-      const tb = document.getElementById('pos-tbody');
-      if (tb) tb.innerHTML = positionRowsHtml(filteredPositionRows());
-      document.querySelectorAll('#pos-tbody [data-open-leg]').forEach(el => el.onclick = () => {
-        const [cusip, cls] = el.dataset.openLeg.split('|'); openLeg(cusip, cls);
-      });
-    };
-    posSearch.focus();
-    posSearch.selectionStart = posSearch.value.length;
+    posSearch.oninput = (e) => { state.search = e.target.value; const tb = document.getElementById('pos-tbody'); if (tb) { tb.innerHTML = positionRowsHtml(filteredPositionRows()); attachLegClicks('#pos-tbody'); } };
   }
-  document.querySelectorAll('[data-filter]').forEach(el => el.onclick = () => { state.filter = el.dataset.filter; const tb = document.getElementById('pos-tbody'); if (tb) { tb.innerHTML = positionRowsHtml(filteredPositionRows()); attachLegClicks('#pos-tbody'); }});
-  document.querySelectorAll('[data-k]').forEach(el => el.onclick = () => {
+  document.querySelectorAll('.menu').forEach(el => el.addEventListener('click', ev => ev.stopPropagation()));
+  document.querySelectorAll('[data-filter]').forEach(el => el.addEventListener('click', () => { state.filter = el.dataset.filter; state.more = null; render(); }));
+  document.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', () => {
     const k = el.dataset.k;
     if (state.sortKey === k) state.sortDir *= -1; else { state.sortKey = k; state.sortDir = -1; }
-    const tb = document.getElementById('pos-tbody');
-    if (tb) { tb.innerHTML = positionRowsHtml(filteredPositionRows()); attachLegClicks('#pos-tbody'); }
-  });
-
+    render();
+  }));
   const expSearch = document.getElementById('exp-search');
   if (expSearch) expSearch.oninput = (e) => { state.expSearch = e.target.value; const tb = document.getElementById('exp-tbody'); if (tb) { tb.innerHTML = exposureRowsHtml(); attachCompanyClicks('#exp-tbody'); }};
-  document.querySelectorAll('[data-exp-k]').forEach(el => el.onclick = () => {
+  document.querySelectorAll('[data-exp-k]').forEach(el => el.addEventListener('click', () => {
     const k = el.dataset.expK;
     if (state.expSortKey === k) state.expSortDir *= -1; else { state.expSortKey = k; state.expSortDir = -1; }
-    const tb = document.getElementById('exp-tbody');
-    if (tb) { tb.innerHTML = exposureRowsHtml(); attachCompanyClicks('#exp-tbody'); }
-  });
-
+    render();
+  }));
   const chgSearch = document.getElementById('chg-search');
   if (chgSearch) chgSearch.oninput = (e) => { state.chgSearch = e.target.value; const tb = document.getElementById('chg-tbody'); if (tb) { tb.innerHTML = changeRowsHtml(); attachLegClicks('#chg-tbody'); }};
-  document.querySelectorAll('[data-chg-filter]').forEach(el => el.onclick = () => { state.chgFilter = el.dataset.chgFilter; const tb = document.getElementById('chg-tbody'); if (tb) { tb.innerHTML = changeRowsHtml(); attachLegClicks('#chg-tbody'); }});
-  document.querySelectorAll('[data-chg-k]').forEach(el => el.onclick = () => {
+  document.querySelectorAll('[data-chg-filter]').forEach(el => el.addEventListener('click', () => { state.chgFilter = el.dataset.chgFilter; state.more = null; render(); }));
+  document.querySelectorAll('[data-chg-k]').forEach(el => el.addEventListener('click', () => {
     const k = el.dataset.chgK;
-    if (state.chgSortKey === k) state.chgSortDir *= -1; else { state.chgSortKey = k; state.chgSortDir = -1; }
-    const tb = document.getElementById('chg-tbody');
-    if (tb) { tb.innerHTML = changeRowsHtml(); attachLegClicks('#chg-tbody'); }
-  });
+    if (k === 'dollarChange' && state.chgSortKey === 'absDollarChange') { state.chgSortKey = 'dollarChange'; state.chgSortDir = -1; }
+    else if (state.chgSortKey === k) state.chgSortDir *= -1;
+    else { state.chgSortKey = k; state.chgSortDir = -1; }
+    render();
+  }));
 }
 
 function attachLegClicks(sel) {
-  document.querySelectorAll(sel + ' [data-open-leg]').forEach(el => el.onclick = () => { const [cusip, cls] = el.dataset.openLeg.split('|'); openLeg(cusip, cls); });
+  document.querySelectorAll(sel + ' [data-open-leg]').forEach(el => el.onclick = () => { const [cusip, cls] = el.dataset.openLeg.split('|'); openLeg(cusip, cls, el.dataset.rowKey); });
 }
 function attachCompanyClicks(sel) {
-  document.querySelectorAll(sel + ' [data-open-company]').forEach(el => el.onclick = () => openCompany(el.dataset.openCompany));
+  document.querySelectorAll(sel + ' [data-open-company]').forEach(el => el.onclick = () => openCompany(el.dataset.openCompany, el.dataset.rowKey));
 }
 
-function svgEl(tag, attrs) { const el = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
-
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
 function drawCharts() {
   if (document.getElementById('curve-chart')) drawCurve();
   if (document.getElementById('matrix-chart')) drawMatrix();
-  if (document.getElementById('trends-chart')) drawTrendsChart();
 }
-
 function drawCurve() {
   const el = document.getElementById('curve-chart');
   const r = currentRateData();
   const series = [];
-  if (state.curveWindow === '20d' || state.curveWindow === 'both') series.push({ curve: r.curve20d.curve, cls: 'curveline' });
-  if (state.curveWindow === '3m' || state.curveWindow === 'both') series.push({ curve: r.curve3m.curve, cls: 'curveline alt' });
+  if (state.curveWindow === '20d' || state.curveWindow === 'both') series.push({ curve: r.curve20d.curve, cls: 'curveline', label: '20d' });
+  if (state.curveWindow === '3m' || state.curveWindow === 'both') series.push({ curve: r.curve3m.curve, cls: 'curveline alt', label: '3m' });
+  if (!series.length) return;
   const primary = series[0].curve;
-  const W = el.clientWidth || 480, H = 220, PAD = { l: 38, r: 12, t: 12, b: 24 };
+  const W = el.clientWidth || 480, H = el.clientHeight || 158, PAD = { l: 38, r: 12, t: 18, b: 24 };
   const maxDay = Math.max(...series.map(s => s.curve[s.curve.length-1].day || 1));
   const xLog = d => Math.log10(d+1), maxXLog = xLog(maxDay);
   const x = d => PAD.l + (xLog(d)/maxXLog)*(W-PAD.l-PAD.r);
   const y = p => (H-PAD.b) - (p/100)*(H-PAD.t-PAD.b);
-  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;display:block' });
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:100%;display:block' });
   [0,25,50,75,100].forEach(p => {
     svg.appendChild(svgEl('line', { class:'gridline', x1:PAD.l,x2:W-PAD.r,y1:y(p),y2:y(p) }));
     const t = svgEl('text', { class:'axislabel', x:4, y:y(p)+3 }); t.textContent = p+'%'; svg.appendChild(t);
   });
   const lastPct = primary[primary.length-1].pctOfFullBook || 0;
   svg.appendChild(svgEl('rect', { class:'curvegap', x:PAD.l, y:y(100), width:W-PAD.l-PAD.r, height:Math.max(0,y(lastPct)-y(100)) }));
+  if (r.curve20d && r.curve20d.unmodeledPctOfBook != null) {
+    const lab = svgEl('text', { class:'axislabel', x: PAD.l + 8, y: y(100) + 14 });
+    lab.textContent = fmtPct(r.curve20d.unmodeledPctOfBook) + ' of filing book has no modeled ADV exit path';
+    svg.appendChild(lab);
+  }
   series.forEach(s => {
     const linePts = s.curve.map(pt => `${x(pt.day)},${y(pt.pctOfFullBook||0)}`).join(' ');
     if (s === series[0]) {
@@ -927,17 +1550,16 @@ function drawCurve() {
     }
     svg.appendChild(svgEl('polyline', { class:s.cls, points:linePts }));
   });
-  [0,1,5,20,50,100,250,500,1000].filter(d=>d<=maxDay||d===0).forEach(d => {
+  [0,1,5,20,100,500].filter(d=>d<=maxDay||d===0).concat([maxDay]).filter((d,i,a)=>a.indexOf(d)===i).forEach(d => {
     const t = svgEl('text', { class:'axislabel', x:x(d), y:H-6, 'text-anchor': 'middle' }); t.textContent = d+'d'; svg.appendChild(t);
   });
   el.innerHTML = ''; el.appendChild(svg);
 }
-
 function drawMatrix() {
   const el = document.getElementById('matrix-chart');
   const points = currentRateData().liquidity.filter(p => p.pctSharesOutstanding !== null && p.daysToLiquidate_20d !== null);
-  if (!points.length) { el.innerHTML = '<span class="card-note">No positions with both ownership % and liquidity data.</span>'; return; }
-  const W = el.clientWidth || 480, H = 320, PAD = { l: 62, r: 16, t: 16, b: 46 };
+  if (!points.length) { el.innerHTML = '<span class="panel-note">No positions with both ownership % and liquidity data.</span>'; return; }
+  const W = el.clientWidth || 480, H = el.clientHeight || 220, PAD = { l: 62, r: 16, t: 16, b: 46 };
   const maxX = Math.max(...points.map(p=>p.pctSharesOutstanding), 5) * 1.1;
   const maxYRaw = Math.max(...points.map(p=>p.daysToLiquidate_20d), 10);
   const yScale = v => Math.log10(v+1), maxY = yScale(maxYRaw)*1.1;
@@ -945,30 +1567,25 @@ function drawMatrix() {
   const y = v => (H-PAD.b) - (yScale(v)/maxY)*(H-PAD.t-PAD.b);
   const sizes = points.map(p => Math.abs(p.filedCommonValue || p.verifiedValue || 0));
   const maxSz = Math.max(...sizes, 1);
-  const svg = svgEl('svg', { viewBox:`0 0 ${W} ${H}`, style:'width:100%;display:block' });
-  const midX = x(maxX/2), midY = y(Math.pow(10, yScale(maxYRaw)/2)-1);
-  svg.appendChild(svgEl('line', { class:'gridline', x1:midX,x2:midX,y1:PAD.t,y2:H-PAD.b }));
-  svg.appendChild(svgEl('line', { class:'gridline', x1:PAD.l,x2:W-PAD.r,y1:midY,y2:midY }));
-  const danger = svgEl('rect', { x: midX, y: PAD.t, width: Math.max(0, W-PAD.r-midX), height: Math.max(0, midY-PAD.t), fill: 'rgba(248,81,73,.07)' });
-  svg.appendChild(danger);
+  const svg = svgEl('svg', { viewBox:`0 0 ${W} ${H}`, style:'width:100%;height:100%;display:block' });
   [1,10,100,1000].filter(v=>v<=maxYRaw*1.2).forEach(v => {
     const t = svgEl('text', { class:'axislabel', x:24, y:y(v)+3 }); t.textContent = v+'d'; svg.appendChild(t);
   });
-  [0,maxX/2,maxX].forEach(v => {
-    const t = svgEl('text', { class:'axislabel', x:x(v), y:H-PAD.b+16, 'text-anchor': 'middle' }); t.textContent = v.toFixed(1)+'%'; svg.appendChild(t);
+  [0, maxX].forEach(v => {
+    const t = svgEl('text', { class:'axislabel', x:x(v), y:H-PAD.b+16, 'text-anchor': v===0?'start':'end' }); t.textContent = v.toFixed(0)+'%'; svg.appendChild(t);
   });
-  const xTitle = svgEl('text', { class:'axislabel', x:(PAD.l+W-PAD.r)/2, y:H-6, 'text-anchor': 'middle', style:'font-size:11px' });
-  xTitle.textContent = '% Shares Outstanding'; svg.appendChild(xTitle);
-  const yTitle = svgEl('text', { class:'axislabel', x:8, y:(PAD.t+H-PAD.b)/2, 'text-anchor': 'middle', style:'font-size:11px', transform:`rotate(-90 8 ${(PAD.t+H-PAD.b)/2})` });
-  yTitle.textContent = 'Days to Liquidate (log)'; svg.appendChild(yTitle);
-  const tooltip = document.createElement('div'); tooltip.className = 'tooltip';
+  const xTitle = svgEl('text', { class:'axislabel', x:(PAD.l+W-PAD.r)/2, y:H-6, 'text-anchor': 'middle' });
+  xTitle.textContent = 'Ownership \u00b7 % shares outstanding'; svg.appendChild(xTitle);
+  const yTitle = svgEl('text', { class:'axislabel', x:8, y:(PAD.t+H-PAD.b)/2, 'text-anchor': 'middle', transform:`rotate(-90 8 ${(PAD.t+H-PAD.b)/2})` });
+  yTitle.textContent = 'Exit days \u00b7 log'; svg.appendChild(yTitle);
+  const tooltip = document.createElement('div'); tooltip.className = 'chart-tip';
   points.forEach(p => {
     const rad = 3 + 9 * Math.sqrt((p.filedCommonValue || p.verifiedValue || 0) / maxSz);
-    let fill = 'var(--blue)';
-    if (p.concentratedAndIlliquid) fill = 'var(--red)';
-    else if (p.thresholdProximityFlag || p.compoundingIlliquidity) fill = 'var(--amb)';
-    const dot = svgEl('circle', { class:'scatterdot', cx:x(p.pctSharesOutstanding), cy:y(p.daysToLiquidate_20d), r:rad, fill, opacity:0.8 });
-    dot.onmouseenter = () => { tooltip.innerHTML = `<strong>${esc(p.ticker || '')} ${esc(p.issuer)}</strong><br>${fmtDays(p.daysToLiquidate_20d)} \u00b7 ${p.pctSharesOutstanding.toFixed(2)}% SO \u00b7 ${fmtUSD(p.filedCommonValue || p.verifiedValue, true)}`; tooltip.classList.add('show'); };
+    let fill = '#66B0FF';
+    if (p.concentratedAndIlliquid) fill = '#FF8C87';
+    else if (p.thresholdProximityFlag || p.compoundingIlliquidity) fill = '#E9B85B';
+    const dot = svgEl('circle', { class:'scatterdot', cx:x(p.pctSharesOutstanding), cy:y(p.daysToLiquidate_20d), r:rad, fill, opacity:0.85 });
+    dot.onmouseenter = () => { tooltip.innerHTML = '<strong>' + esc(p.ticker || '') + ' ' + esc(p.issuer) + '</strong><br>' + fmtDays(p.daysToLiquidate_20d) + ' \u00b7 ' + p.pctSharesOutstanding.toFixed(2) + '% SO \u00b7 ' + fmtUSD(p.filedCommonValue || p.verifiedValue, true); tooltip.classList.add('show'); };
     dot.onmousemove = (e) => { const rect = el.getBoundingClientRect(); tooltip.style.left = (e.clientX-rect.left+12)+'px'; tooltip.style.top = (e.clientY-rect.top-8)+'px'; };
     dot.onmouseleave = () => tooltip.classList.remove('show');
     dot.onclick = () => openLeg(p.cusip, p.instrumentClass);
@@ -977,40 +1594,33 @@ function drawMatrix() {
   el.innerHTML=''; el.appendChild(svg); el.appendChild(tooltip);
 }
 
-function drawTrendsChart() {
-  const el = document.getElementById('trends-chart');
-  const quarters = DATA.trendsOverTime;
-  const W = el.clientWidth || 480, H = 260, PAD = { l: 38, r: 100, t: 16, b: 30 };
-  const series = [
-    { key: 'indexHedgeRatioPct', label: 'Index Hedge Ratio', color: 'var(--blue)' },
-    { key: 'top10PctOfFullBook', label: 'Top 10 %', color: 'var(--grn)' },
-    { key: 'top20PctOfFullBook', label: 'Top 20 %', color: 'var(--amb)' },
-  ];
-  const allValues = series.flatMap(s => quarters.map(q => q[s.key] || 0));
-  const maxY = Math.max(...allValues, 10) * 1.15;
-  const x = i => PAD.l + (i / (quarters.length - 1 || 1)) * (W - PAD.l - PAD.r);
-  const y = v => (H - PAD.b) - (v / maxY) * (H - PAD.t - PAD.b);
-  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;display:block' });
-  [0, 25, 50, 75, 100].filter(v => v <= maxY).forEach(v => {
-    svg.appendChild(svgEl('line', { class: 'gridline', x1: PAD.l, x2: W-PAD.r, y1: y(v), y2: y(v) }));
-    const t = svgEl('text', { class: 'axislabel', x: 4, y: y(v)+3 }); t.textContent = v+'%'; svg.appendChild(t);
-  });
-  quarters.forEach((q, i) => {
-    const t = svgEl('text', { class: 'axislabel', x: x(i), y: H-8, 'text-anchor': 'middle' }); t.textContent = q.quarter; svg.appendChild(t);
-  });
-  series.forEach(s => {
-    const pts = quarters.map((q, i) => `${x(i)},${y(q[s.key] || 0)}`).join(' ');
-    svg.appendChild(svgEl('polyline', { points: pts, fill: 'none', stroke: s.color, 'stroke-width': 2 }));
-    quarters.forEach((q, i) => {
-      svg.appendChild(svgEl('circle', { cx: x(i), cy: y(q[s.key] || 0), r: 3.5, fill: s.color }));
-    });
-    const lastVal = quarters[quarters.length-1][s.key] || 0;
-    const legendText = svgEl('text', { class: 'axislabel', x: W-PAD.r+8, y: y(lastVal)+3, fill: s.color });
-    legendText.textContent = s.label; svg.appendChild(legendText);
-  });
-  el.innerHTML = ''; el.appendChild(svg);
+function onGlobalKey(ev) {
+  if (ev.key === 'Escape') {
+    if (helpIsOpen()) { closeHelp(); ev.preventDefault(); return; }
+    if (state.more) { state.more = null; render(); ev.preventDefault(); return; }
+    if (state.detail) { closeDetail(); ev.preventDefault(); return; }
+  }
+  if (ev.key === 'Tab' && state.detail) {
+    const drawer = document.getElementById('drawer');
+    if (!drawer) return;
+    const focusables = [...drawer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length-1];
+    if (ev.shiftKey && document.activeElement === first) { last.focus(); ev.preventDefault(); }
+    else if (!ev.shiftKey && document.activeElement === last) { first.focus(); ev.preventDefault(); }
+  }
 }
 
-window.addEventListener('resize', () => drawCharts());
+if (!window.__dashBound) {
+  window.__dashBound = true;
+  document.addEventListener('keydown', onGlobalKey);
+  document.addEventListener('click', (ev) => {
+    if (!state.more) return;
+    if (ev.target.closest && ev.target.closest('.more-wrap')) return;
+    state.more = null;
+    render();
+  });
+  window.addEventListener('resize', () => { positionHelp(); drawCharts(); });
+}
 render();
 """
