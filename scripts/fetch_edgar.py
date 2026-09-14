@@ -26,6 +26,8 @@ try:
 except ImportError:
     raise SystemExit("edgartools is not installed. Run: pip install edgartools")
 
+from classify_securities import normalize_ticker
+
 REGISTRY_FILE = Path(__file__).resolve().parent.parent / "references" / "manager_registry.json"
 SCRIPTS_DIR = Path(__file__).resolve().parent
 
@@ -283,13 +285,11 @@ def rows_from_filing(company, filing, thirteenf=None):
             "titleOfClass": record.get("Class"),
             "cusip": record.get("Cusip"),
             "figi": None,   # not extracted by this edgartools version's XML parser -- verified absent
-            "ticker": record.get("Ticker") or "",   # edgartools DOES provide this -- feeds
-                                                       # classify_securities.py's FUND_TICKER_MAP,
-                                                       # which had nothing to match against before
-                                                       # this field was captured (found on the first
-                                                       # real fetch: XRT fell to FUND_UNVERIFIED
-                                                       # despite already being a verified ticker,
-                                                       # because no ticker ever reached the classifier)
+            "ticker": normalize_ticker(record.get("Ticker")),
+            # edgartools adds Ticker via CUSIP lookup; official 13F XML
+            # has no ticker field. Missing lookups arrive as pandas NaN.
+            # normalize_ticker turns None / NaN / non-strings / "nan" into
+            # "" so FUND_TICKER_MAP is a no-op rather than a crash.
             "value": record.get("Value"),
             "sshPrnamt": record.get("SharesPrnAmount"),
             "sshPrnamtType": TYPE_REVERSE_MAP.get(raw_type, raw_type),

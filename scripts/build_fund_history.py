@@ -45,6 +45,13 @@ from fetch_edgar import (
     rows_from_filing,
     write_json,
 )
+from filing_anomaly import (
+    ReviewRequired,
+    assess_anomalous_13f,
+    cover_page_totals,
+    format_review_report,
+    infotable_size_bytes,
+)
 
 ALLOWED_QUARTERS = frozenset({3, 4})
 SHARED_NAMES = ("parsed_rows.json", "classified_rows.json", "market_data.json")
@@ -119,8 +126,14 @@ def _assert_not_shared(path: Path) -> None:
         )
 
 
-def persist_quarter(manager, filing, original_accession, period, company) -> dict:
-    """Fetch infotable, classify, and write stamped parse/classify/template."""
+def persist_quarter(manager, filing, original_accession, period, company,
+                    prior_quarters=None) -> dict:
+    """Fetch infotable, classify, and write stamped parse/classify/template.
+
+    Anomalous stub filings raise ReviewRequired after parsed rows are
+    written and before classification or Bloomberg template generation.
+    Earlier quarters already persisted in this run are left in place.
+    """
     parsed_out = parsed_path(manager, period)
     classified_out = classified_write_path(manager, period)
     template_out = bloomberg_template_path(manager, period)
@@ -136,8 +149,26 @@ def persist_quarter(manager, filing, original_accession, period, company) -> dic
     write_json(parsed_out, rows)
     print(f"Wrote {len(rows)} parsed rows: {parsed_out}")
 
-    for row in rows:
-        row.setdefault("ticker", "")
+    table_entry_total, table_value_total = cover_page_totals(thirteenf)
+    xml_bytes = infotable_size_bytes(thirteenf)
+    filing_bytes = getattr(filing, "size", None)
+    filing_date = str(filing.filing_date) if filing.filing_date else None
+    decision = assess_anomalous_13f(
+        manager_name=manager.full_name,
+        cik=manager.cik,
+        period=period,
+        accession=filing.accession_number,
+        rows=rows,
+        table_entry_total=table_entry_total,
+        table_value_total=table_value_total,
+        infotable_bytes=xml_bytes,
+        filing_bytes=filing_bytes,
+        filing_date=filing_date,
+        prior_quarters=prior_quarters,
+    )
+    if decision.review_required:
+        raise ReviewRequired(format_review_report(decision))
+
     classified = classify_all(rows)
     validate_classified(classified, manager.cik, period, classified_out)
     if not any(r.get("instrumentClass") for r in classified):
@@ -147,12 +178,20 @@ def persist_quarter(manager, filing, original_accession, period, company) -> dic
 
     export_template(classified, template_out)
 
+    value_total = table_value_total
+    if value_total is None:
+        value_total = sum(int(r["value"] or 0) for r in rows if r.get("value") is not None)
+
     return {
         "period": period,
         "accession": filing.accession_number,
         "original_accession": original_accession,
         "form": filing.form,
         "row_count": len(classified),
+        "value_total": value_total,
+        "filing_bytes": filing_bytes,
+        "infotable_bytes": xml_bytes,
+        "filing_date": filing_date,
         "parsed": parsed_out,
         "classified": classified_out,
         "template": template_out,
@@ -185,11 +224,22 @@ def build_history(manager_query: str, n_quarters: int) -> list[dict]:
     )
 
     results = []
+    prior_quarters = []
     for filing, original_accession, period in selected:
         print(f"\n=== {manager.full_name}  period {period} ===")
-        results.append(
-            persist_quarter(manager, filing, original_accession, period, company)
+        item = persist_quarter(
+            manager, filing, original_accession, period, company,
+            prior_quarters=prior_quarters,
         )
+        results.append(item)
+        prior_quarters.append({
+            "period": item["period"],
+            "row_count": item["row_count"],
+            "value_total": item["value_total"],
+            "filing_bytes": item.get("filing_bytes"),
+            "infotable_bytes": item.get("infotable_bytes"),
+            "filing_date": item.get("filing_date"),
+        })
 
     print(f"\nWrote {len(results)} stamped quarters for {manager.full_name} "
           f"(CIK {manager.cik}):")
@@ -254,6 +304,9 @@ def main(argv=None) -> None:
     try:
         with _scripts_cwd():
             build_history(args.manager, args.quarters)
+    except ReviewRequired as exc:
+        print(str(exc))
+        raise SystemExit(2)
     except FundBuildError as exc:
         _die(str(exc))
 

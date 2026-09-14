@@ -117,6 +117,28 @@ ETF_SPONSOR_PATTERN = re.compile(
 )
 
 
+def normalize_ticker(value):
+    """Coerce a ticker to a string usable by FUND_TICKER_MAP.
+
+    Invalid values become "" so classification never calls .strip() on
+    None / NaN / non-strings. Empty ticker is a no-op for the map.
+    Valid tickers are stripped but otherwise unchanged (case included).
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        if not text or text.casefold() in ("nan", "none"):
+            return ""
+        return text
+    try:
+        if value != value:
+            return ""
+    except Exception:
+        return ""
+    return ""
+
+
 def fund_class_of(row):
     """Returns a fund class string if this row is fund-shaped, else None.
     Checked independently of putCall so options branches can consult it.
@@ -127,7 +149,7 @@ def fund_class_of(row):
     if cusip in FUND_CUSIP_MAP:
         return FUND_CUSIP_MAP[cusip]
 
-    ticker = (row.get("ticker") or "").strip().upper()
+    ticker = normalize_ticker(row.get("ticker")).upper()
     if ticker in FUND_TICKER_MAP:
         return FUND_TICKER_MAP[ticker]
 
@@ -209,6 +231,7 @@ def classify_row(row):
 
 def classify_all(rows):
     for row in rows:
+        row["ticker"] = normalize_ticker(row.get("ticker"))
         row["instrumentClass"] = classify_row(row)
     return rows
 
@@ -226,12 +249,9 @@ if __name__ == "__main__":
     with open(input_path) as f:
         rows = json.load(f)
 
-    # This filing's rows carry no resolved ticker field yet (that's a
-    # separate CUSIP->ticker step) -- fall back to "" so fund_class_of's
-    # ticker check is a no-op and only the sponsor-name pattern applies.
-    for r in rows:
-        r.setdefault("ticker", "")
-
+    # Normalize ticker before classify. Missing / NaN / non-string values
+    # become "" so FUND_TICKER_MAP is a no-op and only CUSIP / sponsor
+    # patterns apply.
     classify_all(rows)
 
     from collections import Counter
