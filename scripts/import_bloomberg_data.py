@@ -47,6 +47,7 @@ import os
 import re
 import sys
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -63,6 +64,7 @@ from fund_io import (
     resolve_manager,
     shared_working_files,
     validate_classified,
+    write_market_snapshot,
 )
 from resolution_log import make_exception_id, get_resolution, derive_quarter_label
 
@@ -340,11 +342,21 @@ def print_import_report(results, input_file, output_file, still_open, already_re
     print(f"\nWrote {output_file}")
 
 
-def write_market_json(path, records):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(records, f, indent=2)
+def bloomberg_pulled_at_now():
+    """UTC stamp taken when this import accepts a refreshed workbook.
+
+    Not workbook mtime, not dashboard build time, not HTML-open time.
+    The workbook has no Bloomberg LAST_UPDATE column — Excel core.xml
+    modified is save time, not a Bloomberg refresh field — so import
+    time is the authoritative provenance.
+    """
+    return datetime.now(timezone.utc).replace(microsecond=0).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
+def write_market_json(path, records, meta=None):
+    write_market_snapshot(Path(path), records, meta)
 
 
 def filing_cusips_from_rows(rows):
@@ -477,12 +489,21 @@ def validate_output_path(output: Path, cik: str, period: str, canonical: Path) -
         )
 
 
-def finalize_and_write(results, fund_name, classified_rows, input_file, output_file):
+def finalize_and_write(
+    results, fund_name, classified_rows, input_file, output_file,
+    bloomberg_pulled_at=None,
+):
     quarter = derive_quarter_label(classified_rows)
     still_open, already_resolved_no_value = apply_resolutions(
         results, fund_name, quarter
     )
-    write_market_json(output_file, results)
+    meta = {}
+    output_path = Path(output_file)
+    if bloomberg_pulled_at and MARKET_NAME_RE.match(output_path.name):
+        meta["bloombergPulledAt"] = bloomberg_pulled_at
+    write_market_json(output_file, results, meta or None)
+    if meta.get("bloombergPulledAt"):
+        print(f"Bloomberg pulled at {meta['bloombergPulledAt']}")
     print_import_report(
         results, input_file, output_file, still_open, already_resolved_no_value
     )
@@ -496,7 +517,8 @@ def run_legacy(input_file, fund_name):
     except FileNotFoundError:
         classified_rows = []
     finalize_and_write(
-        results, fund_name, classified_rows, input_file, DEFAULT_OUTPUT_FILE
+        results, fund_name, classified_rows, input_file, DEFAULT_OUTPUT_FILE,
+        bloomberg_pulled_at=None,
     )
 
 
@@ -527,7 +549,8 @@ def run_stamped(input_file, classified_path, output_arg, fund_arg):
 
     fund_name = fund_arg if fund_arg else manager.slug
     finalize_and_write(
-        matched, fund_name, rows, str(input_path), output_path
+        matched, fund_name, rows, str(input_path), output_path,
+        bloomberg_pulled_at=bloomberg_pulled_at_now(),
     )
     print(
         "Shared working files were not used: classified_rows.json, "

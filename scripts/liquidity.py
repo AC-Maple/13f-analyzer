@@ -39,6 +39,7 @@ illiquidity signal depends on the divergence between them.
 import json
 from pathlib import Path
 
+from fund_io import split_market_payload
 from resolution_log import make_exception_id, get_resolution, derive_quarter_label
 
 ADV_ELIGIBLE_CLASSES = {
@@ -72,9 +73,10 @@ def load_market_data(path="data/market_data.json"):
             f"{path} not found -- run export_bloomberg_template.py, refresh "
             f"in Excel, then import_bloomberg_data.py first."
         )
-    with open(path) as f:
-        records = json.load(f)
-    return {r["cusip"]: r for r in records}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    records, _meta = split_market_payload(raw, path)
+    return {r["cusip"]: r for r in records if isinstance(r, dict) and r.get("cusip")}
 
 
 def compute_liquidity(positions, market_data, participation_rate=0.15, position_basis="common"):

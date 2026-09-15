@@ -15,10 +15,14 @@ button,input{font-family:inherit}
 .wrap{max-width:1552px;margin:0 auto;padding:20px 24px 48px}
 .inert{pointer-events:none;user-select:none}
 
-.hdr{display:flex;align-items:center;gap:16px;flex-wrap:wrap;min-height:28px}
-.hdr h1{font-size:20px;line-height:28px;font-weight:600}
-.hdr-meta{color:var(--dim);font-size:12px;line-height:20px}
-.hdr-right{margin-left:auto;display:flex;align-items:center}
+.hdr{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;min-height:28px}
+.hdr-id{min-width:0;flex:1}
+.hdr h1{font-size:24px;line-height:30px;font-weight:700;letter-spacing:-0.01em}
+.hdr-meta{display:block;color:var(--dim);font-size:12px;line-height:18px;margin-top:4px;font-weight:400}
+.hdr-right{margin-left:auto;display:flex;align-items:flex-start;padding-top:4px}
+.hdr-integrity{background:none;border:0;padding:0;font:inherit;font-size:12px;line-height:18px;color:var(--dim);cursor:help}
+.hdr-integrity.warn{color:var(--review)}
+.hdr-integrity.fail{color:var(--crit)}
 .filed-line{color:var(--dim);font-size:12px;line-height:20px;margin-top:6px}
 
 .tabbar{display:flex;gap:8px;margin-top:16px;border-bottom:1px solid var(--line);height:40px;align-items:stretch}
@@ -29,14 +33,15 @@ button,input{font-family:inherit}
 .tabpanel.on{display:block}
 
 .tiles-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.tile{display:grid;grid-template-columns:minmax(0,1fr) 14px;grid-template-rows:16px auto 1fr;column-gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;height:108px;padding:14px 16px 12px;text-align:left;color:inherit;width:100%;cursor:pointer;min-width:0}
-.tile.compact{height:104px;padding:12px 16px}
+.tile{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:4px;min-height:108px;height:auto;padding:14px 16px 12px;text-align:left;color:inherit;width:100%;cursor:pointer;min-width:0}
+.tile.compact{min-height:112px;padding:12px 16px}
 .tile:hover{background:var(--hover)}
-.tile-label{grid-column:1;grid-row:1;font-size:12px;line-height:16px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.tile-value{grid-column:1 / -1;grid-row:2;font-size:24px;line-height:30px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:10px;white-space:nowrap;overflow:visible;min-width:0}
+.tile-head{display:flex;align-items:flex-start;gap:8px;width:100%;flex:0 0 auto}
+.tile-label{flex:1 1 auto;min-width:0;font-size:12px;line-height:16px;color:var(--dim);white-space:normal;overflow:visible;overflow-wrap:break-word}
+.tile .info{flex:0 0 14px;width:14px;height:14px;margin-top:1px;border:1px solid var(--dim);border-radius:50%;font-size:9px;line-height:12px;text-align:center;color:var(--dim)}
+.tile-value{font-size:24px;line-height:30px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;margin-top:10px;white-space:nowrap;overflow:visible;min-width:0;flex:0 0 auto}
 .tile.compact .tile-value{font-size:20px;line-height:26px;margin-top:8px}
-.tile-qual{grid-column:1 / -1;grid-row:3;align-self:end;font-size:11px;line-height:16px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tile .info{grid-column:2;grid-row:1;position:static;width:14px;height:14px;margin-top:1px;border:1px solid var(--dim);border-radius:50%;font-size:9px;line-height:12px;text-align:center;color:var(--dim);flex:0 0 auto}
+.tile-qual{margin-top:auto;padding-top:8px;font-size:11px;line-height:14px;color:var(--dim);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .review-val{color:var(--review)}
 .crit-val{color:var(--crit)}
 .opt{color:var(--der)}
@@ -165,6 +170,14 @@ button.rank-row.on{background:var(--selected)}
 .rank-row.muted .rank-name,.rank-row.muted .rank-pct{color:var(--dim);font-weight:400}
 .rank-note{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);color:var(--dim);font-size:11px;line-height:16px}
 .rank-clear{margin:4px 0 8px}
+.filter-flag{display:flex;align-items:center;gap:10px;min-height:32px;padding:6px 16px;border-bottom:1px solid var(--line);font-size:12px;line-height:18px;color:var(--txt);background:var(--selected)}
+.filter-flag .quiet{margin-left:auto}
+.rank-const{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.rank-const-h{display:flex;align-items:center;gap:8px;font-size:12px;line-height:18px;color:var(--dim);margin-bottom:6px}
+.rank-const-h .quiet{margin-left:auto}
+.rank-const-row{display:flex;align-items:baseline;gap:8px;min-height:32px;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0 4px;margin:0 -4px;border-radius:3px}
+.rank-const-row:hover{background:var(--hover)}
+.rank-const-row .wt{min-width:56px;text-align:right;font-size:12px;line-height:18px}
 
 .view-row{display:flex;align-items:center;gap:8px;height:32px;margin:16px 0}
 .view-toggle{display:inline-flex;align-items:stretch}
@@ -265,12 +278,13 @@ const state = {
   sectorLevel: 'industry',
   curveWindow: '20d',
   selectedIndustry: null,
+  expSectorFilter: null,
   detail: null,
   liqView: 'blotter',
   more: null,
   expCols: { overlay: false, gics: false },
   posCols: { shares: false, verified: false, adv: false, so: false, gics: false, qoq: false },
-  open: { histOv: false, histChg: false, gicsOv: false, gicsChg: false, industry: false, excl: false, sectorH: false, rot: false, dLiq: false, dHist: false, dSrc: false, dFam: false, allIdx: false, method: false },
+  open: { histOv: true, histChg: false, gicsOv: false, gicsChg: false, industry: false, excl: false, sectorH: false, rot: false, dLiq: false, dHist: false, dSrc: false, dFam: false, allIdx: false, method: false },
   origin: null,
   _pendingRestore: null,
   detailJustOpened: false,
@@ -282,19 +296,19 @@ const state = {
 const HELP = {
   totalExposure: {
     title: 'Total Exposure',
-    body: 'Filed common/long-class value + call notional \u2212 put notional for positions included in the exposure book. Hedge instruments excluded by the current methodology are shown separately. Option notional is not delta-adjusted.',
+    body: 'Total Exposure uses the manager\u2019s SEC-filed quarter-end values. Common/long-class value plus call notional minus put notional. Index hedges are shown separately. This can differ from Bloomberg-revalued market values used in liquidity analysis.',
   },
   indexHedge: {
     title: 'Index Hedge',
     body: 'Broad-market index put notional \u00f7 the model\u2019s long-book exposure. Sector/other hedges are excluded. Above 100% means put notional exceeds the denominator; it does not establish a delta-neutral portfolio.',
   },
   top10: {
-    title: 'Top 10 Concentration',
-    body: 'Share of the exposure book represented by its ten largest exposures using the current model\u2019s ranking and denominator. Individual position weights elsewhere use Common Book.',
+    title: 'Top 10 Exposure Concentration',
+    body: 'Share of Total Exposure represented by the portfolio\u2019s 10 largest exposures. Positions are ranked using Total Exposure. This is a portfolio concentration measure; individual position weights elsewhere use Common Book.',
   },
   compounding: {
     title: 'Compounding Illiquidity',
-    body: 'At least 20 trading days to exit at the selected participation and basis, with 20-day ADV below 3-month ADV.\nA slow exit alongside declining volume. Requires valid inputs for both windows.',
+    body: 'At least 20 trading days to exit at the selected participation rate and position basis, using 20-day ADV, with 20-day ADV below 3-month ADV.\nA slow exit alongside declining volume. Requires valid inputs for both windows. Days to Liquidate remains shares \u00f7 (share ADV \u00d7 participation).',
   },
   filedDelta: {
     title: 'Filed \u0394$',
@@ -329,8 +343,12 @@ const HELP = {
     body: 'ADV-modeled instrument records over modeled plus excluded instrument records for this model scope. Exclusions are methodology or data-availability outcomes, not a coverage percentage of Common Book.',
   },
   modeledBook: {
-    title: 'ADV-Modeled Book',
-    body: 'Verified market value of instruments included in the ADV liquidity model at the selected participation and basis. Options and warrants are excluded from this book.',
+    title: 'ADV-Modeled Market Value',
+    body: 'Market value of instruments included in the ADV liquidity model using Bloomberg last sale verified prices. This can differ from Total Exposure, which uses SEC-filed quarter-end values. The Bloomberg pull date records when the refreshed market data was captured; it does not change the filed 13F valuation date. Days to Liquidate is based on shares \u00f7 (share ADV \u00d7 participation), not this dollar revaluation.',
+  },
+  gicsName: {
+    title: 'GICS classification',
+    body: 'Value as stored in the Bloomberg market-data snapshot. Truncated Bloomberg fields are shown as received and are not reconstructed.',
   },
   slowest: {
     title: 'Slowest Modeled Exit',
@@ -382,6 +400,54 @@ function currentRateData() { return DATA.byBasis[state.basis][state.rate]; }
 function ratePct() { return (parseFloat(state.rate) * 100).toFixed(0); }
 function basisLabel() { return state.basis === 'common_plus_calls' ? 'Common + calls' : 'Common'; }
 function assumptionLabel() { return '@ ' + ratePct() + '% ADV \u00b7 ' + basisLabel(); }
+function compoundingQual() { return ratePct() + '% participation \u00b7 20d ADV \u00b7 ' + basisLabel(); }
+function bloombergPulledDisplay() {
+  const raw = DATA.asOf && DATA.asOf.bloombergPulledAt;
+  if (!raw) return null;
+  const day = String(raw).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const d = fmtDate(day);
+  if (!d || d === '\u2014' || /T/.test(d) || /:\d{2}/.test(d)) return null;
+  return d;
+}
+function modeledBookQual() {
+  const pulled = bloombergPulledDisplay();
+  if (pulled) return 'Bloomberg last sale verified prices \u00b7 pulled ' + pulled;
+  return 'Bloomberg last sale verified prices \u00b7 pull date unavailable';
+}
+function modeledBookBody() {
+  const pulled = bloombergPulledDisplay();
+  const filed = fmtDate(DATA.asOf && DATA.asOf.filedPeriod);
+  const pulledBit = pulled
+    ? ('Bloomberg last sale verified prices pulled on ' + pulled)
+    : 'Bloomberg last sale verified prices (pull date unavailable)';
+  const filedBit = (DATA.asOf && DATA.asOf.filedPeriod && filed !== '\u2014')
+    ? ('SEC-filed quarter-end values as of ' + filed)
+    : 'SEC-filed quarter-end values';
+  return 'Market value of instruments included in the ADV liquidity model using ' + pulledBit + '. This can differ from Total Exposure, which uses ' + filedBit + '. The Bloomberg pull date records when the refreshed market data was captured; it does not change the filed 13F valuation date. Days to Liquidate is based on shares \u00f7 (share ADV \u00d7 participation), not this dollar revaluation.';
+}
+function looksLikeInternalSlug(s) {
+  return !!(s && /_/.test(s) && !/\s/.test(s));
+}
+function managerLabel() {
+  const display = (DATA.managerDisplayName || '').trim();
+  const slug = (DATA.fundName || '').trim();
+  if (display && !looksLikeInternalSlug(display)) return display;
+  if (display && display !== slug) return display;
+  return display || slug;
+}
+function filedQuarterEndQual() {
+  const iso = DATA.asOf && DATA.asOf.filedPeriod;
+  const d = fmtDate(iso);
+  if (!iso || d === '\u2014') return 'Filed quarter-end values';
+  return 'Filed quarter-end values \u00b7 ' + d;
+}
+function sectorField() {
+  return state.sectorLevel === 'subIndustry' ? 'gicsSubIndustry' : 'gicsIndustry';
+}
+function sectorLevelLabel() {
+  return state.sectorLevel === 'subIndustry' ? 'Sub-industry' : 'Industry';
+}
 function isDerivativeLeg(cls) {
   const c = (cls || '').toUpperCase();
   return c === 'WARRANT' || c.includes('CALL') || c.includes('PUT');
@@ -414,7 +480,8 @@ function quarterLabel(period) {
 }
 function fmtDate(iso) {
   if (!iso) return '\u2014';
-  const [y, m, d] = iso.split('-').map(Number);
+  const day = String(iso).slice(0, 10);
+  const [y, m, d] = day.split('-').map(Number);
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   if (!m || !d) return iso;
   return d + ' ' + months[m - 1] + ' ' + y;
@@ -441,13 +508,25 @@ function reenteredSet() {
 }
 function sortMark(active) { return active ? ' \u25be' : ''; }
 
-function integrityTag() {
+function integrityStatusLine() {
   const integ = DATA.integrity || {};
-  const st = integ.status || 'Unknown';
-  let label = st;
-  if (st === 'PASS WITH REVIEW/PENDING ITEMS') label = 'PASS \u00b7 review / pending';
-  const cls = st === 'FAIL' ? 'crit' : 'review';
-  return '<span class="badge ' + cls + '" data-help="integrity" tabindex="0">' + esc(label) + '</span>';
+  const st = integ.status || '';
+  let label = 'Integrity: review';
+  let cls = '';
+  if (st === 'FAIL') {
+    label = 'Integrity: review required';
+    cls = ' fail';
+  } else if (st === 'PASS') {
+    label = 'Integrity: pass';
+  } else {
+    const n = integ.openReviewCount;
+    if (typeof n === 'number' && n > 0) {
+      label = 'Integrity: ' + n + ' review item' + (n === 1 ? '' : 's');
+    } else {
+      label = 'Integrity: review';
+    }
+  }
+  return '<button type="button" class="hdr-integrity' + cls + '" data-help="integrity" tabindex="0">' + esc(label) + '</button>';
 }
 
 function gicsReconNotes(g, extra) {
@@ -461,35 +540,52 @@ function gicsReconNotes(g, extra) {
   return '<div class="gics-block">' + bits.map(esc).join(' ') + '</div>';
 }
 
-function helpContent(id) {
+function helpContent(id, anchor) {
   const spec = HELP[id];
   if (!spec) return null;
+  let body = spec.body;
   let qual = spec.qualifier || '';
-  if (id === 'compounding') qual = assumptionLabel();
+  if (id === 'compounding') qual = compoundingQual();
+  if (id === 'modeledBook') body = modeledBookBody();
+  if (id === 'gicsName') {
+    const full = (anchor && (anchor.dataset.gicsFull || (anchor.getAttribute && anchor.getAttribute('data-gics-full')))) || '';
+    body = full || spec.body;
+    qual = 'Bloomberg GICS field as stored. Truncated source values are not reconstructed.';
+  }
   if (id === 'integrity') {
     const integ = DATA.integrity || {};
     const extra = [];
+    if (integ.status) extra.push(integ.status + '.');
     if (integ.check1Status) extra.push('Check 1: ' + integ.check1Status + '.');
     if (integ.duplicateGroupCount) extra.push(integ.duplicateGroupCount + ' duplicate group' + (integ.duplicateGroupCount === 1 ? '' : 's') + '.');
     if (integ.openReviewCount) extra.push(integ.openReviewCount + ' open review' + (integ.openReviewCount === 1 ? '' : 's') + '.');
     qual = extra.join(' ');
   }
-  return spec.title + '\n' + spec.body + (qual ? '\n' + qual : '');
+  return spec.title + '\n' + body + (qual ? '\n' + qual : '');
 }
 
-function renderHelpBox(id) {
+function renderHelpBox(id, anchor) {
   const spec = HELP[id];
   if (!spec) return '';
+  let body = spec.body;
   let qual = '';
-  if (id === 'compounding') qual = assumptionLabel();
+  if (id === 'compounding') qual = compoundingQual();
+  if (id === 'modeledBook') body = modeledBookBody();
+  if (id === 'gicsName') {
+    const full = (anchor && (anchor.dataset.gicsFull || (anchor.getAttribute && anchor.getAttribute('data-gics-full')))) || '';
+    body = full || spec.body;
+    qual = 'Bloomberg GICS field as stored. Truncated source values are not reconstructed.';
+  }
   if (id === 'integrity') {
     const integ = DATA.integrity || {};
     const extra = [];
+    if (integ.status) extra.push(integ.status + '.');
     if (integ.check1Status) extra.push('Check 1: ' + integ.check1Status + '.');
     if (integ.duplicateGroupCount) extra.push(integ.duplicateGroupCount + ' duplicate group' + (integ.duplicateGroupCount === 1 ? '' : 's') + '.');
+    if (integ.openReviewCount) extra.push(integ.openReviewCount + ' open review' + (integ.openReviewCount === 1 ? '' : 's') + '.');
     qual = extra.join(' ');
   }
-  return '<div class="help-title">' + esc(spec.title) + '</div><div class="help-body">' + esc(spec.body).replace(/\n/g, '<br><br>') + '</div>' + (qual ? '<div class="help-qual">' + esc(qual) + '</div>' : '');
+  return '<div class="help-title">' + esc(spec.title) + '</div><div class="help-body">' + esc(body).replace(/\n/g, '<br><br>') + '</div>' + (qual ? '<div class="help-qual">' + esc(qual) + '</div>' : '');
 }
 
 function helpEl() { return document.getElementById('help-tip'); }
@@ -512,24 +608,60 @@ function positionHelp() {
   const pad = 12, gap = 8;
   const w = el.offsetWidth || 344;
   const h = el.offsetHeight || 80;
-  let left;
-  if (r.left > window.innerWidth / 2) left = Math.max(pad, r.right - w);
-  else left = r.left;
-  if (left + w > window.innerWidth - pad) left = Math.max(pad, window.innerWidth - pad - w);
-  if (left < pad) left = pad;
-  let top = r.bottom + gap;
-  const belowFits = top + h <= window.innerHeight - pad;
-  const aboveFits = (r.top - h - gap) >= pad;
-  if (!belowFits && aboveFits) top = r.top - h - gap;
-  else if (!belowFits && !aboveFits) {
-    top = Math.min(Math.max(pad, r.top), Math.max(pad, window.innerHeight - pad - h));
-    const toRight = r.right + gap;
-    const toLeft = r.left - w - gap;
-    if (toRight + w <= window.innerWidth - pad) left = toRight;
-    else if (toLeft >= pad) left = toLeft;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const headerIntegrity = helpAnchor.classList.contains('hdr-integrity');
+  const tiles = document.querySelector('.tabpanel.on .tiles-4');
+  const tilesBox = tiles ? tiles.getBoundingClientRect() : null;
+  const filed = document.querySelector('.filed-line');
+
+  function clamp(left, top) {
+    left = Math.min(Math.max(pad, left), Math.max(pad, vw - pad - w));
+    top = Math.min(Math.max(pad, top), Math.max(pad, vh - pad - h));
+    return { left: left, top: top };
   }
-  el.style.top = top + 'px';
-  el.style.left = left + 'px';
+  function overlapArea(box, rect) {
+    if (!rect) return 0;
+    const x = Math.max(0, Math.min(box.left + box.w, rect.right) - Math.max(box.left, rect.left));
+    const y = Math.max(0, Math.min(box.top + box.h, rect.bottom) - Math.max(box.top, rect.top));
+    return x * y;
+  }
+  function score(pos) {
+    const box = { left: pos.left, top: pos.top, w: w, h: h };
+    let s = 0;
+    if (pos.left < pad - 0.5 || pos.top < pad - 0.5 || pos.left + w > vw - pad + 0.5 || pos.top + h > vh - pad + 0.5) s -= 8000;
+    if (headerIntegrity) s -= overlapArea(box, tilesBox) * 12;
+    return s;
+  }
+
+  const rightAlignLeft = r.right - w;
+  const belowHeader = (headerIntegrity && filed)
+    ? (filed.getBoundingClientRect().bottom + gap)
+    : (r.bottom + gap);
+  const candidates = [];
+  if (headerIntegrity) {
+    candidates.push(clamp(r.left - w - gap, r.top));
+    candidates.push(clamp(r.left - w - gap, Math.max(pad, r.bottom - h)));
+    candidates.push(clamp(pad, belowHeader));
+    candidates.push(clamp(rightAlignLeft, belowHeader));
+    candidates.push(clamp(rightAlignLeft, r.top - h - gap));
+  } else {
+    const preferRight = r.left > vw / 2;
+    const left = preferRight ? rightAlignLeft : r.left;
+    candidates.push(clamp(left, r.bottom + gap));
+    candidates.push(clamp(left, r.top - h - gap));
+    candidates.push(clamp(r.right + gap, r.top));
+    candidates.push(clamp(r.left - w - gap, r.top));
+  }
+
+  let best = candidates[0];
+  let bestScore = -Infinity;
+  for (let i = 0; i < candidates.length; i++) {
+    const sc = score(candidates[i]);
+    if (sc > bestScore) { bestScore = sc; best = candidates[i]; }
+  }
+  el.style.top = best.top + 'px';
+  el.style.left = best.left + 'px';
 }
 function openHelp(anchor, id) {
   if (state.detail) return;
@@ -537,7 +669,7 @@ function openHelp(anchor, id) {
   if (!el || !HELP[id]) return;
   clearTimeout(helpCloseTimer);
   helpAnchor = anchor;
-  el.innerHTML = renderHelpBox(id);
+  el.innerHTML = renderHelpBox(id, anchor);
   el.hidden = false;
   void el.offsetHeight;
   positionHelp();
@@ -574,7 +706,7 @@ function captureOrigin(rowKey) {
     tab: state.tab, search: state.search, expSearch: state.expSearch, chgSearch: state.chgSearch,
     filter: state.filter, chgFilter: state.chgFilter, sortKey: state.sortKey, sortDir: state.sortDir,
     expSortKey: state.expSortKey, expSortDir: state.expSortDir, chgSortKey: state.chgSortKey, chgSortDir: state.chgSortDir,
-    selectedIndustry: state.selectedIndustry, liqView: state.liqView, selectedKey: rowKey || state.selectedKey,
+    selectedIndustry: state.selectedIndustry, expSectorFilter: state.expSectorFilter, liqView: state.liqView, selectedKey: rowKey || state.selectedKey,
     _scroll: Object.assign({}, state._scroll), _win: state._win.slice(),
   };
 }
@@ -625,6 +757,7 @@ function closeDetail() {
     state.chgSortKey = origin.chgSortKey;
     state.chgSortDir = origin.chgSortDir;
     state.selectedIndustry = origin.selectedIndustry;
+    if (origin.expSectorFilter !== undefined) state.expSectorFilter = origin.expSectorFilter;
     state.liqView = origin.liqView;
     state.selectedKey = origin.selectedKey;
     state._pendingRestore = origin;
@@ -667,7 +800,7 @@ function tile(opts) {
   const plainVal = String(opts.value == null ? '' : opts.value).replace(/<[^>]+>/g, '');
   const aria = esc((opts.label || '') + ' ' + plainVal + ' ' + (opts.qual || ''));
   return '<button type="button" class="tile' + compact + '" data-help="' + opts.help + '" data-go="' + (opts.go || '') + '" data-go-extra="' + esc(opts.goExtra || '') + '" aria-label="' + aria + '">' +
-    '<div class="tile-label">' + esc(opts.label) + '</div><span class="info" aria-hidden="true">i</span>' +
+    '<div class="tile-head"><div class="tile-label">' + esc(opts.label) + '</div><span class="info" aria-hidden="true">i</span></div>' +
     '<div class="tile-value' + valCls + '">' + opts.value + '</div>' +
     '<div class="tile-qual" title="' + esc(opts.qual) + '">' + esc(opts.qual) + '</div></button>';
 }
@@ -684,24 +817,30 @@ function rankBarRow(opts) {
     track = '<span class="rank-track" aria-hidden="true"><span class="rank-fill' + (opts.muted ? ' dim' : '') + '" style="width:' + w.toFixed(1) + '%"></span></span>';
   }
   const inner =
-    '<span class="rank-name" title="' + esc(opts.name) + '">' + esc(opts.name) + '</span>' +
+    '<span class="rank-name">' + esc(opts.name) + '</span>' +
     track +
     (opts.pct != null ? '<span class="rank-pct">' + opts.pct + '</span>' : '') +
     '<span class="rank-usd">' + opts.usd + '</span>';
+  const gicsHelp = (opts.pick || opts.clickable)
+    ? ' data-help="gicsName" data-gics-full="' + esc(opts.name) + '"'
+    : '';
+  if (opts.pick) {
+    return '<button type="button" class="' + cls + '" data-sector-pick="' + esc(opts.pick) + '"' + gicsHelp + '>' + inner + '</button>';
+  }
   if (opts.clickable) {
-    return '<button type="button" class="' + cls + '" data-industry="' + esc(opts.name) + '" title="' + esc(opts.name) + '">' + inner + '</button>';
+    return '<button type="button" class="' + cls + '" data-industry="' + esc(opts.name) + '"' + gicsHelp + '>' + inner + '</button>';
   }
   return '<div class="' + cls + '">' + inner + '</div>';
 }
 
 function renderHeader() {
-  const name = DATA.managerDisplayName || DATA.fundName;
+  const name = managerLabel();
   const q = DATA.currentQuarterLabel || '';
   const filed = fmtDate(DATA.asOf && DATA.asOf.filingDate);
   const values = fmtDate(DATA.asOf && DATA.asOf.filedPeriod);
-  return '<div class="hdr"><h1>' + esc(name) + '</h1>' +
-    '<span class="hdr-meta">' + esc(q) + ' \u00b7 ' + DATA.positionCount + ' economic positions</span>' +
-    '<span class="hdr-right">' + integrityTag() + '</span></div>' +
+  return '<div class="hdr"><div class="hdr-id"><h1>' + esc(name) + '</h1>' +
+    '<div class="hdr-meta">' + esc(q) + ' \u00b7 ' + DATA.positionCount + ' economic positions</div></div>' +
+    '<div class="hdr-right">' + integrityStatusLine() + '</div></div>' +
     '<p class="filed-line">Filed ' + esc(filed) + ' \u00b7 Filed values: ' + esc(values) + ' \u00b7 Verified values: Bloomberg PX_LAST</p>';
 }
 function renderTabs() {
@@ -858,10 +997,10 @@ function renderOverview() {
   const compounding = liveCompounding();
   const hedge = DATA.hedge || {};
   return '<div class="tiles-4">' +
-    tile({ label: 'Total Exposure', value: fmtUSD(DATA.concentration.fullBookTotal, true), qual: 'Index hedges shown separately', help: 'totalExposure', go: 'exp' }) +
+    tile({ label: 'Total Exposure', value: fmtUSD(DATA.concentration.fullBookTotal, true), qual: filedQuarterEndQual(), help: 'totalExposure', go: 'exp' }) +
     tile({ label: 'Index Hedge', value: fmtPct(hedge.indexHedgeRatioPct), qual: fmtUSD(hedge.indexPutNotional, true) + ' broad-market puts', help: 'indexHedge', go: 'exp' }) +
-    tile({ label: 'Top 10 Concentration', value: fmtPct(DATA.concentration.top10PctOfFullBook), qual: 'of Total Exposure', help: 'top10', go: 'exp', goExtra: 'top10' }) +
-    tile({ label: 'Compounding Illiquidity', value: compounding.length + ' position' + (compounding.length===1?'':'s'), qual: assumptionLabel(), help: 'compounding', go: 'liq', goExtra: 'compounding', tone: compounding.length ? 'review' : '' }) +
+    tile({ label: 'Top 10 Exposure Concentration', value: fmtPct(DATA.concentration.top10PctOfFullBook), qual: 'of Total Exposure', help: 'top10', go: 'exp', goExtra: 'top10' }) +
+    tile({ label: 'Compounding Illiquidity', value: compounding.length + ' position' + (compounding.length===1?'':'s'), qual: compoundingQual(), help: 'compounding', go: 'liq', goExtra: 'compounding', tone: compounding.length ? 'review' : '' }) +
     '</div><div class="split-60">' + renderLargestExposures() + renderAttention() + '</div>' +
     renderGicsLine('overview') + renderHistory('overview');
 }
@@ -977,7 +1116,7 @@ function renderExposureTable() {
     '<div class="toolbar"><input class="search exp" id="exp-search" placeholder="Search security, ticker or CUSIP" value="' + esc(state.expSearch) + '">' +
     '<span style="flex:1"></span><div class="more-wrap"><button type="button" class="quiet" data-more="exp">Columns</button>' +
     (state.more==='exp' ? '<div class="menu right"><label><input type="checkbox" data-exp-col="overlay"' + (state.expCols.overlay?' checked':'') + '> Call Overlay</label><label><input type="checkbox" data-exp-col="gics"' + (state.expCols.gics?' checked':'') + '> GICS</label></div>' : '') +
-    '</div></div><div class="table-clip exp" data-scroll="exp"><table class="exp-table"><colgroup><col style="width:290px"><col style="width:120px"><col style="width:100px"><col style="width:80px"><col style="width:144px"><col style="width:128px">' + (state.expCols.overlay ? '<col style="width:120px">' : '') + (state.expCols.gics ? '<col style="width:160px">' : '') + '</colgroup><thead><tr>' +
+    '</div></div>' + sectorFilterBanner() + '<div class="table-clip exp" data-scroll="exp"><table class="exp-table"><colgroup><col style="width:290px"><col style="width:120px"><col style="width:100px"><col style="width:80px"><col style="width:144px"><col style="width:128px">' + (state.expCols.overlay ? '<col style="width:120px">' : '') + (state.expCols.gics ? '<col style="width:160px">' : '') + '</colgroup><thead><tr>' +
     '<th class="l' + (state.expSortKey==='issuer'?' sorted':'') + '" data-exp-k="issuer">Security' + sortMark(state.expSortKey==='issuer') + '</th>' +
     '<th' + (state.expSortKey==='commonValue'?' class="sorted"':'') + ' data-exp-k="commonValue">Filed Common' + sortMark(state.expSortKey==='commonValue') + '</th>' +
     '<th' + (state.expSortKey==='callValue'?' class="sorted"':'') + ' data-exp-k="callValue">Calls' + sortMark(state.expSortKey==='callValue') + '</th>' +
@@ -990,11 +1129,32 @@ function renderExposureTable() {
     '<div class="panel-foot"><span>' + filteredExposures().length + ' exposures \u00b7 Filed / quarter-end \u00b7 Calls are not delta-adjusted</span></div></div>';
 }
 
+function sectorFilterBanner() {
+  if (!state.expSectorFilter) return '';
+  return '<div class="filter-flag"><span>' + esc(sectorLevelLabel()) + ': ' + esc(state.expSectorFilter) + '</span><button type="button" class="quiet" data-clear-sector>Clear</button></div>';
+}
+
+function sectorConstituents(name) {
+  const field = sectorField();
+  let rows = (DATA.exposures || []).filter(e => (e.commonValue > 0 || e.callValue > 0));
+  if (name === 'Unclassified') rows = rows.filter(e => !e[field]);
+  else rows = rows.filter(e => (e[field] || '') === name);
+  rows.sort((a,b) => (b.trueLongExposure || 0) - (a.trueLongExposure || 0));
+  return rows;
+}
+
 function filteredExposures() {
   let rows = [...(DATA.exposures || [])];
+  if (state.expSectorFilter) {
+    const name = state.expSectorFilter;
+    const field = sectorField();
+    rows = rows.filter(e => (e.commonValue > 0 || e.callValue > 0));
+    if (name === 'Unclassified') rows = rows.filter(e => !e[field]);
+    else rows = rows.filter(e => (e[field] || '') === name);
+  }
   if (state.expSearch) {
     const q = state.expSearch.toLowerCase();
-    rows = rows.filter(e => (e.issuer||'').toLowerCase().includes(q) || (e.ticker||'').toLowerCase().includes(q) || (e.cusip||'').toLowerCase().includes(q) || (e.gicsIndustry||'').toLowerCase().includes(q));
+    rows = rows.filter(e => (e.issuer||'').toLowerCase().includes(q) || (e.ticker||'').toLowerCase().includes(q) || (e.cusip||'').toLowerCase().includes(q) || (e.gicsIndustry||'').toLowerCase().includes(q) || (e.gicsSubIndustry||'').toLowerCase().includes(q));
   }
   rows.sort((a,b) => {
     const av = a[state.expSortKey], bv = b[state.expSortKey];
@@ -1006,7 +1166,11 @@ function filteredExposures() {
   return rows;
 }
 function exposureRowsHtml() {
-  return filteredExposures().map(e => {
+  const rows = filteredExposures();
+  if (!rows.length) {
+    return '<tr><td colspan="6"><div class="empty">No positions match these filters <button type="button" class="linkish" id="clear-exp">Clear filters</button></div></td></tr>';
+  }
+  return rows.map(e => {
     const key = 'exp-' + e.cusip;
     const pct = e.isCallOnly ? '<span class="badge der">Options-only</span>' : fmtPct(e.pctOfCommonBook, 2);
     return '<tr class="clickable' + (state.selectedKey===key?' sel':'') + '" tabindex="0" data-row-key="' + esc(key) + '" data-open-company="' + esc(e.issuerKey || e.issuer) + '">' +
@@ -1017,7 +1181,7 @@ function exposureRowsHtml() {
       '<td>' + money(e.trueLongExposure, true) + '</td>' +
       '<td>' + pct + '</td>' +
       (state.expCols.overlay ? '<td>' + (e.optionToCommonRatioPct!=null ? e.optionToCommonRatioPct.toFixed(0)+'%' : dash()) + '</td>' : '') +
-      (state.expCols.gics ? '<td class="l">' + esc(e.gicsIndustry || '\u2014') + '</td>' : '') +
+      (state.expCols.gics ? '<td class="l" tabindex="0" data-help="gicsName" data-gics-full="' + esc(e.gicsIndustry || '') + '">' + esc(e.gicsIndustry || '\u2014') + '</td>' : '') +
       '</tr>';
   }).join('');
 }
@@ -1066,6 +1230,8 @@ function renderSectorConcentration() {
       widthPct: width(s.pctFullBook),
       pct: fmtPct(s.pctFullBook, 2),
       usd: fmtUSD(s.trueLongExposure, true),
+      pick: s.sector,
+      on: state.expSectorFilter === s.sector,
     })).join('') +
     (rest.length ? rankBarRow({
       name: 'Other (' + rest.length + ')',
@@ -1080,9 +1246,34 @@ function renderSectorConcentration() {
       pct: fmtPct(unclassified.pctFullBook, 2),
       usd: fmtUSD(unclassified.trueLongExposure, true),
       muted: true,
+      pick: 'Unclassified',
+      on: state.expSectorFilter === 'Unclassified',
     }) : '') +
-    '<div class="rank-note">Total Exposure with hedges excluded. Individual position weights use Common Book \u2014 these two denominators are intentionally different.</div>' +
+    renderSectorConstituents() +
+    '<div class="rank-note">Total Exposure with hedges excluded. Individual position weights use Common Book \u2014 these two denominators are intentionally different. Click an industry to see constituent securities.</div>' +
     '</div></div>';
+}
+
+function renderSectorConstituents() {
+  const name = state.expSectorFilter;
+  if (!name) return '';
+  const rows = sectorConstituents(name);
+  const n = rows.length;
+  const head = esc(sectorLevelLabel()) + ': ' + esc(name) + ' \u00b7 ' + n + ' securit' + (n === 1 ? 'y' : 'ies');
+  if (!n) {
+    return '<div class="rank-const"><div class="rank-const-h"><span>' + head + '</span><button type="button" class="quiet" data-clear-sector>Clear</button></div></div>';
+  }
+  return '<div class="rank-const">' +
+    '<div class="rank-const-h"><span>' + head + '</span><button type="button" class="quiet" data-clear-sector>Clear</button></div>' +
+    rows.map(e => {
+      const pct = e.isCallOnly ? 'Options-only' : fmtPct(e.pctOfCommonBook, 2);
+      return '<button type="button" class="rank-const-row" data-open-company="' + esc(e.issuerKey || e.issuer) + '">' +
+        '<span class="tk">' + (e.ticker ? esc(e.ticker) : '\u2014') + '</span>' +
+        '<span class="nm z">' + esc(e.issuer || '') + '</span>' +
+        '<span class="stat-value" style="margin-left:auto">' + fmtUSD(e.trueLongExposure, true) + '</span>' +
+        '<span class="wt z">' + pct + '</span></button>';
+    }).join('') +
+    '<div class="rank-note">Total Exposure (SEC filed quarter-end) \u00b7 weight is % Common Book</div></div>';
 }
 
 function slowestModeled(liq) {
@@ -1119,7 +1310,7 @@ function renderLiquidity() {
   const modeledVal = (r.curve20d && r.curve20d.modeledValue);
   return renderLiqControls() +
     '<div class="tiles-4">' +
-    tile({ compact: true, label: 'ADV-Modeled Book', value: fmtUSD(modeledVal, true), qual: 'Verified value \u00b7 ' + modeled + ' instruments', help: 'modeledBook' }) +
+    tile({ compact: true, label: 'ADV-Modeled Market Value', value: fmtUSD(modeledVal, true), qual: modeledBookQual(), help: 'modeledBook' }) +
     tile({ compact: true, label: 'Concentrated + Illiquid', value: conc.length + ' position' + (conc.length===1?'':'s'), qual: 'Ownership proximity + compounding', help: 'concIlliquid', go: 'liq', goExtra: 'concilliq', tone: conc.length ? 'crit' : '' }) +
     tile({ compact: true, label: 'Slowest Modeled Exit', value: slow ? fmtDays(slow.daysToLiquidate_20d) : '\u2014', qual: slow ? ((slow.ticker || slow.issuer) + ' \u00b7 20d ADV') : 'No resolved DTL', help: 'slowest', go: 'liq' }) +
     tile({ compact: true, label: 'Coverage', value: modeled + ' / ' + denom, qual: 'Instrument count \u00b7 ' + excludedN + ' excluded', help: 'coverage' }) +
@@ -1217,7 +1408,7 @@ function positionRowsHtml(rows) {
       (cols.verified ? '<td>' + money(p.verifiedValue, true) + '</td>' : '') +
       (cols.adv ? '<td class="mono">' + (p.adv_20d ? Math.round(p.adv_20d).toLocaleString() : '\u2014') + '</td>' : '') +
       (cols.so ? '<td class="mono">' + (p.sharesOutstanding ? Math.round(p.sharesOutstanding).toLocaleString() : '\u2014') + '</td>' : '') +
-      (cols.gics ? '<td class="l">' + esc(p.gicsIndustry || '\u2014') + '</td>' : '') +
+      (cols.gics ? '<td class="l" tabindex="0" data-help="gicsName" data-gics-full="' + esc(p.gicsIndustry || '') + '">' + esc(p.gicsIndustry || '\u2014') + '</td>' : '') +
       (cols.qoq ? '<td class="l">' + (p.qoq ? esc(p.qoq.status) : '\u2014') + '</td>' : '') +
       '</tr>';
   }).join('');
@@ -1402,7 +1593,15 @@ function attachEvents() {
   document.querySelectorAll('[data-tab]').forEach(el => el.addEventListener('click', () => goTab(el.dataset.tab)));
   document.querySelectorAll('[data-rate]').forEach(el => el.addEventListener('click', () => { state.rate = el.dataset.rate; render(); }));
   document.querySelectorAll('[data-basis]').forEach(el => el.addEventListener('click', () => { state.basis = el.dataset.basis; render(); }));
-  document.querySelectorAll('[data-sector-level]').forEach(el => el.addEventListener('click', () => { state.sectorLevel = el.dataset.sectorLevel; render(); }));
+  document.querySelectorAll('[data-sector-level]').forEach(el => el.addEventListener('click', () => {
+    state.sectorLevel = el.dataset.sectorLevel;
+    if (state.expSectorFilter) {
+      const ranked = ((DATA.sectorConcentration[state.sectorLevel] || {}).ranked) || [];
+      const names = new Set(ranked.map(s => s.sector));
+      if (!names.has(state.expSectorFilter)) state.expSectorFilter = null;
+    }
+    render();
+  }));
   document.querySelectorAll('[data-curve]').forEach(el => el.addEventListener('click', () => { state.curveWindow = el.dataset.curve; render(); }));
   document.querySelectorAll('[data-liq-view]').forEach(el => el.addEventListener('click', () => { state.liqView = el.dataset.liqView; render(); }));
   document.querySelectorAll('[data-toggle]').forEach(el => el.addEventListener('click', ev => {
@@ -1415,6 +1614,16 @@ function attachEvents() {
     state.selectedIndustry = state.selectedIndustry === el.dataset.industry ? null : el.dataset.industry;
     state.tab = 'changes';
     state.open.rot = true;
+    render();
+  }));
+  document.querySelectorAll('[data-sector-pick]').forEach(el => el.addEventListener('click', () => {
+    const name = el.dataset.sectorPick;
+    state.expSectorFilter = state.expSectorFilter === name ? null : name;
+    render();
+  }));
+  document.querySelectorAll('[data-clear-sector]').forEach(el => el.addEventListener('click', ev => {
+    ev.stopPropagation();
+    state.expSectorFilter = null;
     render();
   }));
   const clearIndustry = document.getElementById('clear-industry');
@@ -1470,6 +1679,8 @@ function attachEvents() {
   if (clearChg) clearChg.onclick = () => { state.chgFilter = 'all'; state.chgSearch = ''; state.selectedIndustry = null; render(); };
   const clearPos = document.getElementById('clear-pos');
   if (clearPos) clearPos.onclick = () => { state.filter = 'all'; state.search = ''; render(); };
+  const clearExp = document.getElementById('clear-exp');
+  if (clearExp) clearExp.onclick = () => { state.expSearch = ''; state.expSectorFilter = null; render(); };
 
   const posSearch = document.getElementById('pos-search');
   if (posSearch) {

@@ -35,6 +35,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from fund_io import read_market_meta, write_market_snapshot
 from analyze import (
     aggregate_to_economic_positions, compute_true_long_exposure,
     compute_concentration, compute_index_hedge_ratio, flag_related_security_families,
@@ -115,7 +116,9 @@ def _registry_paths():
 def resolve_manager_display_name(fund_name):
     """Legal/display name from the hand-verified registry. Never appends
     a hardcoded 'Capital' suffix -- that was wrong for Melqart and
-    Pinnbrook."""
+    Pinnbrook. Filename slugs such as eminence_capital map to the
+    registry entry's full_name so the dashboard never presents the
+    internal slug when a legal name exists."""
     registry = {}
     for path in _registry_paths():
         if path.exists():
@@ -123,10 +126,18 @@ def resolve_manager_display_name(fund_name):
                 registry = json.load(f)
             break
     key = (fund_name or "").lower().strip()
+    if not key:
+        return fund_name
     if key in registry:
         return registry[key]["full_name"]
+    spaced = re.sub(r"[_]+", " ", key).strip()
+    if spaced in registry:
+        return registry[spaced]["full_name"]
     for k, v in registry.items():
-        if key and (key in k or k.startswith(key)):
+        slug = re.sub(r"[^a-z0-9]+", "_", k).strip("_")
+        if key == slug:
+            return v["full_name"]
+        if key and (key in k or k.startswith(key) or spaced in k or k.startswith(spaced)):
             return v["full_name"]
     return fund_name
 
@@ -210,8 +221,8 @@ def persist_quarter_market_data(rows, market_data):
             f"data/market_data.json before rebuilding."
         )
     matched_records = [r for r in records if r.get("cusip") in matched]
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(matched_records, indent=2), encoding="utf-8")
+    existing_meta = read_market_meta(path) if path.exists() else {}
+    write_market_snapshot(path, matched_records, existing_meta)
     dropped = len(records) - len(matched_records)
     if dropped:
         print(f"Quarter market snapshot {path} wrote {len(matched_records)} "
@@ -760,6 +771,11 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
     )
     call_notional_total = sum(e["callValue"] for e in exposures)
     put_notional_total = sum(e["putValue"] for e in exposures)
+    market_path = quarter_market_data_path(classified_rows)
+    bloomberg_pulled_at = (
+        read_market_meta(market_path).get("bloombergPulledAt")
+        if market_path else None
+    )
 
     return {
         "fundName": fund_name,
@@ -794,6 +810,7 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
             "filingDate": classified_rows[0].get("_source_filing_date") if classified_rows else None,
             "filedValueLabel": "Filed value — quarter-end",
             "verifiedValueLabel": "Verified market value — Bloomberg PX_LAST",
+            "bloombergPulledAt": bloomberg_pulled_at,
         },
         "participationRates": PARTICIPATION_RATES,
         "positionBases": POSITION_BASES,

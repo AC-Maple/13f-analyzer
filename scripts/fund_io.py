@@ -169,6 +169,56 @@ def load_json(path: Path):
         return json.load(f)
 
 
+def split_market_payload(raw, source="market data"):
+    """Accept a legacy JSON list or a {bloombergPulledAt, records} wrapper.
+
+    Provenance only. Returns (records, meta). Historical list files stay
+    valid and carry empty meta — never invent a pull date.
+    """
+    if isinstance(raw, list):
+        return raw, {}
+    if isinstance(raw, dict) and isinstance(raw.get("records"), list):
+        meta = {}
+        pulled = raw.get("bloombergPulledAt")
+        if isinstance(pulled, str) and pulled.strip():
+            meta["bloombergPulledAt"] = pulled.strip()
+        return raw["records"], meta
+    raise ValueError(
+        f"{source}: market data must be a JSON list or an object with a records list"
+    )
+
+
+def market_payload_dump(records, meta=None):
+    """Serialize market data. Wrapper is used only when a pull timestamp exists."""
+    pulled = (meta or {}).get("bloombergPulledAt")
+    if isinstance(pulled, str) and pulled.strip():
+        return {
+            "bloombergPulledAt": pulled.strip(),
+            "records": records,
+        }
+    return records
+
+
+def write_market_snapshot(path: Path, records, meta=None) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(market_payload_dump(records, meta), indent=2),
+        encoding="utf-8",
+    )
+
+
+def read_market_meta(path: Path) -> dict:
+    path = Path(path)
+    if not path.exists():
+        return {}
+    try:
+        _records, meta = split_market_payload(load_json(path), str(path))
+    except (ValueError, json.JSONDecodeError, OSError):
+        return {}
+    return meta
+
+
 def validate_classified(rows, cik: str, period: str, path: Path) -> None:
     if not rows:
         raise FundBuildError(f"{path}: classified file is empty")
@@ -229,9 +279,10 @@ def load_classified(manager: Manager, period: str) -> tuple[Path, list]:
 
 
 def load_market_records(path: Path) -> list:
-    records = load_json(path)
-    if not isinstance(records, list):
-        raise FundBuildError(f"{path}: market data must be a JSON list")
+    try:
+        records, _meta = split_market_payload(load_json(path), str(path))
+    except ValueError as exc:
+        raise FundBuildError(str(exc)) from None
     if not records:
         raise FundBuildError(f"{path} has no securities")
     if not any(r.get("cusip") for r in records if isinstance(r, dict)):
