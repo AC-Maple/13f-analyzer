@@ -159,10 +159,9 @@ def export_template(rows, output_file):
         ws.cell(row=row, column=9,
                  value=f'=BDP({bbg_id},"PARSEKYABLE_DES")').font = FORMULA_FONT
 
-        # Sector classification for analyze.py's compute_sector_concentration.
-        # Same reasoning as PARSEKYABLE_DES: pulled for every security
-        # (including warrants) since a warrant's underlying company still
-        # has a sector, even though the warrant itself has no ADV model.
+        # Live current GICS -- not as-of the 13F quarter-end. Same two-arg
+        # BDP() as PX_LAST; no date override. Do not treat a later refresh
+        # of this workbook as historical GICS for this period.
         ws.cell(row=row, column=10,
                  value=f'=BDP({bbg_id},"GICS_INDUSTRY_NAME")').font = FORMULA_FONT
         ws.cell(row=row, column=11,

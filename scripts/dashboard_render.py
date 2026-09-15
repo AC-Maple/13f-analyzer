@@ -68,11 +68,12 @@ button,input{font-family:inherit}
 .table-clip.ov{max-height:none}
 .table-clip.exp{height:432px}
 .table-clip.chg{height:416px}
-.table-clip.pos{height:352px}
+.table-clip.pos{height:448px}
+.table-clip.rot{overflow:auto}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 .exp-table{min-width:862px}
 .chg-table{min-width:1360px}
-.pos-table{min-width:1360px}
+.pos-table{min-width:1100px}
 th,td{padding:0 8px;white-space:nowrap;font-variant-numeric:tabular-nums}
 th{position:sticky;top:0;z-index:1;height:32px;background:var(--raised);text-align:right;font-size:11px;line-height:16px;font-weight:400;color:var(--dim);cursor:pointer;user-select:none;border-bottom:1px solid var(--line)}
 th.l,td.l{text-align:left;overflow:hidden}
@@ -151,7 +152,7 @@ tr.row-crit td:first-child{box-shadow:inset 2px 0 0 var(--crit)}
 
 .rank-panel{margin-top:16px}
 .rank-body{padding:8px 16px 14px}
-.rank-row{display:grid;grid-template-columns:200px minmax(160px,1fr) 68px 84px;column-gap:10px;align-items:center;min-height:40px;width:100%}
+.rank-row{display:grid;grid-template-columns:minmax(160px,200px) minmax(120px,1fr) 72px 84px 72px;column-gap:10px;align-items:center;min-height:40px;width:100%}
 .rank-row.delta{grid-template-columns:200px minmax(160px,1fr) 96px}
 button.rank-row{border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:3px;padding:0 4px;margin:0 -4px}
 button.rank-row:hover{background:var(--hover)}
@@ -164,9 +165,9 @@ button.rank-row.on{background:var(--selected)}
 .rank-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line);z-index:1}
 .rank-fill.pos{position:absolute;left:50%;top:0;bottom:0;opacity:.88;border-radius:0 2px 2px 0}
 .rank-fill.neg{position:absolute;right:50%;top:0;bottom:0;background:var(--dim);opacity:.7;border-radius:2px 0 0 2px}
-.rank-pct,.rank-usd{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;line-height:18px;text-align:right;white-space:nowrap}
+.rank-pct,.rank-usd,.rank-n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;line-height:18px;text-align:right;white-space:nowrap}
 .rank-pct{color:var(--txt);font-weight:600}
-.rank-usd{color:var(--dim)}
+.rank-usd,.rank-n{color:var(--dim)}
 .rank-row.muted .rank-name,.rank-row.muted .rank-pct{color:var(--dim);font-weight:400}
 .rank-note{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);color:var(--dim);font-size:11px;line-height:16px}
 .rank-clear{margin:4px 0 8px}
@@ -187,15 +188,26 @@ button.rank-row.on{background:var(--selected)}
 .view-toggle .seg:last-child{border-radius:0 3px 3px 0}
 .chartwrap{position:relative}
 .chart-curve{height:158px}
-.chart-matrix{height:220px}
+.chart-matrix{height:280px}
 .axislabel{fill:var(--dim);font-size:11px;font-family:var(--mono)}
+.axis-title{fill:var(--dim);font-size:11px;font-family:var(--font)}
 .gridline{stroke:var(--line);stroke-width:1}
+.axisline{stroke:var(--dim);stroke-width:1.25}
+.tickmark{stroke:var(--dim);stroke-width:1}
 .curveline{fill:none;stroke:var(--blue);stroke-width:2}
 .curveline.alt{stroke:var(--dim);stroke-dasharray:5 4}
 .curvefill{fill:rgba(102,176,255,.10)}
 .curvegap{fill:rgba(160,172,186,.12)}
 .scatterdot{cursor:pointer}
-.chart-tip{position:absolute;background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:7px 10px;font-size:12px;pointer-events:none;opacity:0;z-index:10;max-width:260px}
+.chart-tip{position:absolute;background:var(--raised);border:1px solid var(--line);border-radius:4px;padding:7px 10px;font-size:12px;line-height:18px;pointer-events:none;opacity:0;z-index:10;max-width:300px}
+.rot-table{min-width:520px}
+.rot-table th,.rot-table td{padding:8px 10px;vertical-align:top}
+.rot-table td.l,.rot-table th.l{overflow:hidden;text-overflow:ellipsis}
+.rot-pct{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;line-height:18px;font-weight:600}
+.rot-sub{font-size:11px;line-height:16px;color:var(--dim);margin-top:2px}
+.vol-trend{font-variant-numeric:tabular-nums;white-space:nowrap}
+.vol-trend.up,.vol-trend.flat{color:var(--txt)}
+.vol-trend.dn{color:var(--dim)}
 .chart-tip.show{opacity:1}
 .legend{font-size:11px;line-height:16px;color:var(--dim);display:flex;gap:16px;align-items:center}
 .swatch{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
@@ -246,14 +258,14 @@ footer{margin-top:40px;padding-top:12px;border-top:1px solid var(--line);color:v
   .tiles-4{grid-template-columns:1fr 1fr}
   .band{grid-template-columns:1fr 1fr;height:auto}
   .band-cell{min-height:80px}
-  .rank-row{grid-template-columns:minmax(140px,180px) minmax(96px,1fr) 64px 76px}
+  .rank-row{grid-template-columns:minmax(120px,160px) minmax(80px,1fr) 64px 72px 64px}
   .rank-row.delta{grid-template-columns:minmax(140px,180px) minmax(96px,1fr) 88px}
 }
 @media (max-width:699px){
   .tiles-4,.band{grid-template-columns:1fr}
   .search,.search.exp{width:100%}
   .ctrl-group + .ctrl-group{margin-left:0;padding-left:0;border-left:0;margin-top:8px}
-  .rank-row,.rank-row.delta{grid-template-columns:1fr auto;row-gap:6px;padding-top:8px;padding-bottom:8px}
+  .rank-row,.rank-row.delta{grid-template-columns:1fr auto auto auto;row-gap:6px;padding-top:8px;padding-bottom:8px}
   .rank-name{grid-column:1 / -1}
   .rank-track{grid-column:1 / -1}
 }
@@ -283,7 +295,7 @@ const state = {
   liqView: 'blotter',
   more: null,
   expCols: { overlay: false, gics: false },
-  posCols: { shares: false, verified: false, adv: false, so: false, gics: false, qoq: false },
+  posCols: { verified: false, adv: false, so: false, gics: false, qoq: false },
   open: { histOv: true, histChg: false, gicsOv: false, gicsChg: false, industry: false, excl: false, sectorH: false, rot: false, dLiq: false, dHist: false, dSrc: false, dFam: false, allIdx: false, method: false },
   origin: null,
   _pendingRestore: null,
@@ -314,6 +326,10 @@ const HELP = {
     title: 'Filed \u0394$',
     body: 'Change in filed / quarter-end value. This mixes marks and activity and is not executed trading cash flow. Share-count status is the activity taxonomy.',
   },
+  continuingReduction: {
+    title: 'Largest Continuing Reduction',
+    body: 'Largest negative filed-value change among positions held in both quarters. Closed positions are excluded and reported separately. Filed \u0394 reflects the change in reported quarter-end value and is not equivalent to executed sale proceeds.',
+  },
   callOverlay: {
     title: 'Call Overlay',
     body: 'Call notional \u00f7 filed common value for the same exposure. Not delta-adjusted; unavailable when there is no common-value denominator.',
@@ -322,9 +338,33 @@ const HELP = {
     title: 'Days to Liquidate',
     body: 'Modeled position shares \u00f7 (share ADV \u00d7 participation), using the selected window and basis. A single-leg estimate; options and warrants have no standalone ADV liquidation estimate.',
   },
+  dtl20: {
+    title: 'Days (20d)',
+    body: 'Estimated trading days to exit the position using 20-day average daily share volume at the selected participation rate.',
+  },
+  dtl3m: {
+    title: 'Days (3m)',
+    body: 'Estimated trading days to exit the position using 3-month average daily share volume at the selected participation rate.',
+  },
+  volTrend: {
+    title: 'Vol Trend',
+    body: 'Recent trading-volume trend comparing 20-day average daily share volume with 3-month average daily share volume. Negative values indicate recent volume is below the longer-term average.',
+  },
   pctCommon: {
     title: '% Common Book',
     body: 'Filed common/long-class value \u00f7 total filed Common Book. Call notional and Bloomberg revaluation do not enter this weight.',
+  },
+  pctFund: {
+    title: '% Fund',
+    body: 'Filed common position value as a percentage of the filed Common Book.',
+  },
+  gicsConc: {
+    title: 'GICS Industry Concentration',
+    body: 'Industry classifications use the Bloomberg GICS mapping captured with the market-data refresh for this filing\u2019s holdings. This is not a historical as-of-quarter GICS classification. Position count is the number of Total Exposure names in that GICS industry or sub-industry (CUSIP-level long exposures; index hedges excluded). This is not a count of raw instrument rows.',
+  },
+  gicsRot: {
+    title: 'GICS rotation',
+    body: 'Historical industry rotation requires a verified as-of-quarter GICS source for each comparison quarter. Current Bloomberg GICS fields are live BDP values captured at refresh time, not historical as-of-quarter classifications. File presence, CUSIP overlap, and pull date do not unlock rotation. Current mappings are never applied backward.',
   },
   ownership: {
     title: 'Ownership / Threshold Review',
@@ -332,7 +372,7 @@ const HELP = {
   },
   gics: {
     title: 'GICS coverage',
-    body: 'Industry rotation requires the existing 80% usable-coverage gate for both comparison quarters using each quarter\u2019s own classification data. Current classifications are not copied backward.',
+    body: 'GICS industry rotation stays unavailable until historical as-of GICS provenance exists for the comparison quarters. Current Bloomberg GICS is a live classification captured at refresh time and is not applied backward to prior quarters. The 80% usable-coverage gate is a separate requirement and is not by itself historical provenance.',
   },
   concIlliquid: {
     title: 'Concentrated + Illiquid',
@@ -347,8 +387,8 @@ const HELP = {
     body: 'Market value of instruments included in the ADV liquidity model using Bloomberg last sale verified prices. This can differ from Total Exposure, which uses SEC-filed quarter-end values. The Bloomberg pull date records when the refreshed market data was captured; it does not change the filed 13F valuation date. Days to Liquidate is based on shares \u00f7 (share ADV \u00d7 participation), not this dollar revaluation.',
   },
   gicsName: {
-    title: 'GICS classification',
-    body: 'Value as stored in the Bloomberg market-data snapshot. Truncated Bloomberg fields are shown as received and are not reconstructed.',
+    title: 'Bloomberg GICS',
+    body: 'Bloomberg GICS captured at market-data refresh. Truncated Bloomberg fields are shown as received and are not reconstructed.',
   },
   slowest: {
     title: 'Slowest Modeled Exit',
@@ -390,6 +430,23 @@ function fmtSignedPct(v) {
 }
 function fmtDays(v) {
   return v === null || v === undefined ? '\u2014' : (v < 1 ? '<1' : v.toFixed(1)) + 'd';
+}
+function fmtShares(v) {
+  if (v === null || v === undefined) return '\u2014';
+  return Math.round(v).toLocaleString();
+}
+function fmtVolTrend(v) {
+  if (v === null || v === undefined) return '\u2014';
+  const abs = Math.abs(v).toFixed(0);
+  if (v > 0) return '+' + abs + '% \u2191';
+  if (v < 0) return '\u2212' + abs + '% \u2193';
+  return '0%';
+}
+function volTrendClass(v) {
+  if (v === null || v === undefined) return 'z';
+  if (v > 0) return 'vol-trend up';
+  if (v < 0) return 'vol-trend dn';
+  return 'vol-trend flat';
 }
 function esc(s) {
   const d = document.createElement('div');
@@ -446,7 +503,13 @@ function sectorField() {
   return state.sectorLevel === 'subIndustry' ? 'gicsSubIndustry' : 'gicsIndustry';
 }
 function sectorLevelLabel() {
-  return state.sectorLevel === 'subIndustry' ? 'Sub-industry' : 'Industry';
+  return state.sectorLevel === 'subIndustry' ? 'GICS Sub-Industry' : 'GICS Industry';
+}
+function gicsConcTitle() {
+  return state.sectorLevel === 'subIndustry' ? 'GICS Sub-Industry Concentration' : 'GICS Industry Concentration';
+}
+function gicsRotTitle() {
+  return state.sectorLevel === 'subIndustry' ? 'GICS Sub-Industry Rotation' : 'GICS Industry Rotation';
 }
 function isDerivativeLeg(cls) {
   const c = (cls || '').toUpperCase();
@@ -532,21 +595,31 @@ function integrityStatusLine() {
 function gicsReconNotes(g, extra) {
   const bits = [];
   if (!g) return '';
-  bits.push('Usable coverage: prior ' + fmtPct(g.priorCoveragePct) + ', current ' + fmtPct(g.currentCoveragePct) + ' (gate ' + fmtPct((g.coverageThreshold || 0.8) * 100) + ').');
-  if (g.excludedPriorTrueLong) bits.push(fmtUSD(g.excludedPriorTrueLong, true) + ' of prior-quarter Total Exposure has no usable quarter-specific GICS \u2014 excluded from rotation.');
-  if (g.excludedCurrentTrueLong) bits.push(fmtUSD(g.excludedCurrentTrueLong, true) + ' of current-quarter Total Exposure has no usable quarter-specific GICS \u2014 excluded from rotation.');
-  bits.push('Current-quarter mappings are never applied backward. Missing classification is not treated as zero.');
+  bits.push('Historical GICS provenance: ' + (g.historicalProvenanceAvailable ? 'available' : 'unavailable'));
+  bits.push('Classification coverage: current ' + fmtPct(g.currentCoveragePct) + ', prior ' + fmtPct(g.priorCoveragePct));
+  if (g.historicalProvenanceAvailable) {
+    bits.push('Coverage gate: ' + fmtPct((g.coverageThreshold || 0.8) * 100) + '.');
+    if (g.excludedPriorTrueLong) bits.push(fmtUSD(g.excludedPriorTrueLong, true) + ' of prior-quarter Total Exposure has no usable GICS in the rotation comparison \u2014 excluded from rotation.');
+    if (g.excludedCurrentTrueLong) bits.push(fmtUSD(g.excludedCurrentTrueLong, true) + ' of current-quarter Total Exposure has no usable GICS in the rotation comparison \u2014 excluded from rotation.');
+  }
   if (extra) bits.push(extra);
-  return '<div class="gics-block">' + bits.map(esc).join(' ') + '</div>';
+  return '<div class="gics-block">' + bits.map(esc).join('<br>') + '</div>';
+}
+
+function gicsConcHelpBody() {
+  const kind = state.sectorLevel === 'subIndustry' ? 'Sub-industry' : 'Industry';
+  return kind + ' classifications use the Bloomberg GICS mapping captured with the market-data refresh for this filing\u2019s holdings. This is not a historical as-of-quarter GICS classification. Position count is the number of Total Exposure names in that GICS industry or sub-industry (CUSIP-level long exposures; index hedges excluded). This is not a count of raw instrument rows.';
 }
 
 function helpContent(id, anchor) {
   const spec = HELP[id];
   if (!spec) return null;
   let body = spec.body;
+  let title = spec.title;
   let qual = spec.qualifier || '';
   if (id === 'compounding') qual = compoundingQual();
   if (id === 'modeledBook') body = modeledBookBody();
+  if (id === 'gicsConc') { title = gicsConcTitle(); body = gicsConcHelpBody(); }
   if (id === 'gicsName') {
     const full = (anchor && (anchor.dataset.gicsFull || (anchor.getAttribute && anchor.getAttribute('data-gics-full')))) || '';
     body = full || spec.body;
@@ -561,16 +634,18 @@ function helpContent(id, anchor) {
     if (integ.openReviewCount) extra.push(integ.openReviewCount + ' open review' + (integ.openReviewCount === 1 ? '' : 's') + '.');
     qual = extra.join(' ');
   }
-  return spec.title + '\n' + body + (qual ? '\n' + qual : '');
+  return title + '\n' + body + (qual ? '\n' + qual : '');
 }
 
 function renderHelpBox(id, anchor) {
   const spec = HELP[id];
   if (!spec) return '';
   let body = spec.body;
+  let title = spec.title;
   let qual = '';
   if (id === 'compounding') qual = compoundingQual();
   if (id === 'modeledBook') body = modeledBookBody();
+  if (id === 'gicsConc') { title = gicsConcTitle(); body = gicsConcHelpBody(); }
   if (id === 'gicsName') {
     const full = (anchor && (anchor.dataset.gicsFull || (anchor.getAttribute && anchor.getAttribute('data-gics-full')))) || '';
     body = full || spec.body;
@@ -585,7 +660,7 @@ function renderHelpBox(id, anchor) {
     if (integ.openReviewCount) extra.push(integ.openReviewCount + ' open review' + (integ.openReviewCount === 1 ? '' : 's') + '.');
     qual = extra.join(' ');
   }
-  return '<div class="help-title">' + esc(spec.title) + '</div><div class="help-body">' + esc(body).replace(/\n/g, '<br><br>') + '</div>' + (qual ? '<div class="help-qual">' + esc(qual) + '</div>' : '');
+  return '<div class="help-title">' + esc(title) + '</div><div class="help-body">' + esc(body).replace(/\n/g, '<br><br>') + '</div>' + (qual ? '<div class="help-qual">' + esc(qual) + '</div>' : '');
 }
 
 function helpEl() { return document.getElementById('help-tip'); }
@@ -820,7 +895,8 @@ function rankBarRow(opts) {
     '<span class="rank-name">' + esc(opts.name) + '</span>' +
     track +
     (opts.pct != null ? '<span class="rank-pct">' + opts.pct + '</span>' : '') +
-    '<span class="rank-usd">' + opts.usd + '</span>';
+    '<span class="rank-usd">' + opts.usd + '</span>' +
+    (opts.count != null ? '<span class="rank-n">' + opts.count + '</span>' : '');
   const gicsHelp = (opts.pick || opts.clickable)
     ? ' data-help="gicsName" data-gics-full="' + esc(opts.name) + '"'
     : '';
@@ -940,26 +1016,31 @@ function renderAttention() {
     }).join('') + '</div>';
 }
 
+function gicsRotationAllowed() {
+  const g = DATA.gicsRotation;
+  return !!(g && g.historicalProvenanceAvailable && g.available && (g.ranked || []).length);
+}
+
 function renderGicsLine(which) {
   const g = DATA.gicsRotation;
   const openKey = which === 'changes' ? 'gicsChg' : 'gicsOv';
   if (!g) {
-    return '<div class="plain-line"><span>Industry rotation unavailable \u00b7 no prior quarter supplied</span></div>';
+    return '<div class="plain-line"><span>GICS industry rotation unavailable \u2014 no prior quarter supplied</span></div>';
   }
-  if (!g.available) {
-    return '<div class="plain-line"><span>Industry rotation unavailable \u00b7 historical coverage below requirement</span>' +
+  if (!gicsRotationAllowed()) {
+    return '<div class="plain-line"><span>GICS industry rotation unavailable \u2014 historical as-of GICS classifications are not available for the comparison quarters.</span>' +
       '<button type="button" class="linkish" data-toggle="' + openKey + '" data-help="gics">Details</button></div>' +
       (state.open[openKey] ? gicsReconNotes(g) : '');
   }
   if (which === 'changes') {
-    return '<button type="button" class="disc" data-toggle="rot" aria-expanded="' + state.open.rot + '"><span class="disc-chev">\u203a</span><span class="disc-label">Industry rotation</span><span class="disc-meta">Filters this blotter \u00b7 CLOSED retained</span></button>' +
+    return '<button type="button" class="disc" data-toggle="rot" aria-expanded="' + state.open.rot + '"><span class="disc-chev">\u203a</span><span class="disc-label">GICS industry rotation</span><span class="disc-meta">Filters this blotter \u00b7 CLOSED retained</span></button>' +
       (state.open.rot ? '<div class="disc-body">' + renderIndustryRotationList(g) + '</div>' : '');
   }
   const ranked = g.ranked || [];
   const add = ranked.filter(x => x.deltaTrueLong > 0)[0];
   const cut = ranked.filter(x => x.deltaTrueLong < 0)[0];
   const teaser = [add ? 'Largest add: ' + add.sector + ' ' + fmtSignedUSD(add.deltaTrueLong, true) : '', cut ? 'Largest cut: ' + cut.sector + ' ' + fmtUSD(cut.deltaTrueLong, true) : ''].filter(Boolean).join(' \u00b7 ');
-  return '<div class="plain-line"><span>' + esc(teaser || 'Industry rotation available') + '</span><button type="button" class="linkish" data-toggle="' + openKey + '" data-help="gics">Details</button></div>' +
+  return '<div class="plain-line"><span>' + esc(teaser || 'GICS industry rotation available') + '</span><button type="button" class="linkish" data-toggle="' + openKey + '" data-help="gics">Details</button></div>' +
     (state.open[openKey] ? '<div class="disc-body">' + renderIndustryRotationList(g) + gicsReconNotes(g) + '</div>' : '');
 }
 
@@ -990,7 +1071,7 @@ function renderHistory(which) {
   return '<button type="button" class="disc" data-toggle="' + key + '" aria-expanded="' + state.open[key] + '"><span class="disc-chev">\u203a</span><span class="disc-label">History \u00b7 ' + qs.length + ' quarter' + (qs.length===1?'':'s') + '</span><span class="disc-meta">' + esc(range) + '</span></button>' +
     (state.open[key] ? '<div class="disc-body"><table><thead><tr><th class="l">Quarter</th><th>Total Exposure</th><th>Economic positions</th><th>Index Hedge</th><th>Top 10 %</th></tr></thead><tbody>' +
       qs.map(q => '<tr><td class="l">' + esc(quarterLabel(q.quarter)) + '</td><td>' + money(q.grossLong, true) + '</td><td>' + q.positionCount + '</td><td>' + fmtPct(q.indexHedgeRatioPct) + '</td><td>' + fmtPct(q.top10PctOfFullBook, 2) + '</td></tr>').join('') +
-      '</tbody></table><div class="panel-note" style="margin-top:8px">Each quarter uses its own SEC values. Current GICS is never copied backward.</div></div>' : '');
+      '</tbody></table><div class="panel-note" style="margin-top:8px">Each quarter uses its own SEC values. Live Bloomberg GICS is not applied backward as historical as-of-quarter classifications.</div></div>' : '');
 }
 
 function renderOverview() {
@@ -1027,7 +1108,7 @@ function renderChanges() {
   const nClosed = qoqBucket('CLOSED').count;
   return '<div class="tiles-4">' +
     tile({ compact: true, label: 'Largest Add', value: add ? fmtSignedUSD(add.dollarChange, true) : '\u2014', qual: add ? (add.ticker || add.issuer) + ' \u00b7 filed \u0394' : 'No increased positions', help: 'filedDelta', go: 'changes', goExtra: 'INCREASED' }) +
-    tile({ compact: true, label: 'Largest Reduction', value: red ? fmtSignedUSD(red.dollarChange, true) : '\u2014', qual: red ? (red.ticker || red.issuer) + ' \u00b7 filed \u0394' : 'No decreased positions', help: 'filedDelta', go: 'changes', goExtra: 'DECREASED' }) +
+    tile({ compact: true, label: 'Largest Continuing Reduction', value: red ? fmtSignedUSD(red.dollarChange, true) : '\u2014', qual: red ? (red.ticker || red.issuer) + ' \u00b7 filed \u0394' : 'No decreased positions', help: 'continuingReduction', go: 'changes', goExtra: 'DECREASED' }) +
     tile({ compact: true, label: 'New Positions', value: String(nNew), qual: 'Share-count status', help: 'filedDelta', go: 'changes', goExtra: 'NEW' }) +
     tile({ compact: true, label: 'Closed Positions', value: String(nClosed), qual: 'Included in the blotter', help: 'filedDelta', go: 'changes', goExtra: 'CLOSED' }) +
     '</div>' +
@@ -1051,7 +1132,7 @@ function renderChanges() {
 }
 
 function gicsFilterCusips() {
-  if (!state.selectedIndustry || !DATA.gicsRotation || !DATA.gicsRotation.available) return null;
+  if (!state.selectedIndustry || !gicsRotationAllowed()) return null;
   const row = (DATA.gicsRotation.ranked || []).find(s => s.sector === state.selectedIndustry);
   if (!row) return null;
   return new Set([...(row.currentCusips||[]), ...(row.closedCusips||[]), ...(row.newCusips||[]), ...(row.continuingCusips||[])]);
@@ -1105,7 +1186,7 @@ function renderExposure() {
     '<div class="band-cell" tabindex="0" data-help="totalExposure"><div class="band-label">Total Exposure</div><div class="band-value">' + fmtUSD(DATA.concentration.fullBookTotal, true) + '</div></div>' +
     '<div class="band-cell" tabindex="0" data-help="indexHedge"><div class="band-label">Index Hedge</div><div class="band-value">' + fmtPct(hedge.indexHedgeRatioPct) + '</div></div>' +
     '</div><div class="split-65">' + renderExposureTable() + '<div class="exp-side">' + renderHedgePanel() + renderSectorHedgeLine() + '</div></div>' +
-    renderSectorConcentration();
+    renderSectorConcentration() + renderGicsRotation();
 }
 
 function renderExposureTable() {
@@ -1218,9 +1299,11 @@ function renderSectorConcentration() {
   const rest = classified.slice(10);
   const otherTotal = rest.reduce((a, s) => a + s.trueLongExposure, 0);
   const otherPct = rest.reduce((a, s) => a + (s.pctFullBook || 0), 0);
+  const otherCount = rest.reduce((a, s) => a + (s.positionCount || 0), 0);
   const maxPct = top.length ? (top[0].pctFullBook || 0) : 0;
   function width(pct) { return maxPct ? (pct || 0) / maxPct * 100 : 0; }
-  return '<div class="panel rank-panel"><div class="panel-h"><span class="panel-title">Industry concentration</span>' +
+  function countLabel(n) { return n + ' pos'; }
+  return '<div class="panel rank-panel"><div class="panel-h"><span class="panel-title" data-help="gicsConc">' + esc(gicsConcTitle()) + '</span>' +
     '<span style="display:flex;gap:8px;flex:0 0 auto">' +
     '<button type="button" class="seg' + (state.sectorLevel==='industry'?' on':'') + '" data-sector-level="industry">Industry</button>' +
     '<button type="button" class="seg' + (state.sectorLevel==='subIndustry'?' on':'') + '" data-sector-level="subIndustry">Sub-industry</button></span></div>' +
@@ -1230,6 +1313,7 @@ function renderSectorConcentration() {
       widthPct: width(s.pctFullBook),
       pct: fmtPct(s.pctFullBook, 2),
       usd: fmtUSD(s.trueLongExposure, true),
+      count: countLabel(s.positionCount),
       pick: s.sector,
       on: state.expSectorFilter === s.sector,
     })).join('') +
@@ -1238,6 +1322,7 @@ function renderSectorConcentration() {
       widthPct: width(otherPct),
       pct: fmtPct(otherPct, 2),
       usd: fmtUSD(otherTotal, true),
+      count: countLabel(otherCount),
       muted: true,
     }) : '') +
     (unclassified ? rankBarRow({
@@ -1245,12 +1330,13 @@ function renderSectorConcentration() {
       widthPct: width(unclassified.pctFullBook),
       pct: fmtPct(unclassified.pctFullBook, 2),
       usd: fmtUSD(unclassified.trueLongExposure, true),
+      count: countLabel(unclassified.positionCount),
       muted: true,
       pick: 'Unclassified',
       on: state.expSectorFilter === 'Unclassified',
     }) : '') +
     renderSectorConstituents() +
-    '<div class="rank-note">Total Exposure with hedges excluded. Individual position weights use Common Book \u2014 these two denominators are intentionally different. Click an industry to see constituent securities.</div>' +
+    '<div class="rank-note">Bloomberg GICS captured at market-data refresh. This is not a historical as-of-quarter GICS classification. Total Exposure with hedges excluded. Position count is CUSIP-level Total Exposure names in that classification, not raw instrument rows. Individual position weights use Common Book \u2014 these two denominators are intentionally different. Click a row to see constituent securities.</div>' +
     '</div></div>';
 }
 
@@ -1274,6 +1360,55 @@ function renderSectorConstituents() {
         '<span class="wt z">' + pct + '</span></button>';
     }).join('') +
     '<div class="rank-note">Total Exposure (SEC filed quarter-end) \u00b7 weight is % Common Book</div></div>';
+}
+
+function gicsHistoryQuarters() {
+  const qs = DATA.trendsOverTime || [];
+  const usable = qs.filter(q => q.historicalGicsAsOfAvailable);
+  return usable.slice(-3);
+}
+
+function rotationCell(row) {
+  if (!row) {
+    return '<td><div class="rot-pct z">\u2014</div><div class="rot-sub">unavailable</div></td>';
+  }
+  const pct = row.pctFullBook == null ? '\u2014' : fmtPct(row.pctFullBook, 2);
+  const usd = row.trueLongExposure == null ? '\u2014' : fmtUSD(row.trueLongExposure, true);
+  const n = row.positionCount == null ? '\u2014' : (row.positionCount + ' pos');
+  return '<td><div class="rot-pct">' + pct + '</div><div class="rot-sub">' + usd + ' \u00b7 ' + n + '</div></td>';
+}
+
+function renderGicsRotation() {
+  const g = DATA.gicsRotation;
+  const title = gicsRotTitle();
+  const head = '<div class="panel rank-panel"><div class="panel-h"><span class="panel-title" data-help="gicsRot">' + esc(title) + '</span>';
+  const unavailable =
+    '<div class="rank-note">GICS industry rotation unavailable \u2014 historical as-of GICS classifications are not available for the comparison quarters.</div>' +
+    '<div class="rank-note">Current Bloomberg GICS is a live classification captured at refresh time and is not applied backward to prior quarters.</div>';
+  if (!g) {
+    return head + '</div><div class="rank-body">' + unavailable + '</div></div>';
+  }
+  if (!gicsRotationAllowed()) {
+    return head + '</div><div class="rank-body">' + unavailable + gicsReconNotes(g) + '</div></div>';
+  }
+  const qs = gicsHistoryQuarters();
+  const current = qs[qs.length - 1];
+  const sc = ((current.sectorConcentration || {})[state.sectorLevel]) || DATA.sectorConcentration[state.sectorLevel];
+  const classified = ((sc && sc.ranked) || []).filter(s => s.sector !== 'Unclassified');
+  const names = classified.slice(0, 10).map(s => s.sector);
+  const level = state.sectorLevel === 'subIndustry' ? 'Sub-Industry' : 'Industry';
+  const thead = '<tr><th class="l">Bloomberg GICS ' + level + '</th>' + qs.map(q => '<th>' + esc(quarterLabel(q.quarter)) + '</th>').join('') + '</tr>';
+  const body = names.map(name => {
+    const cells = qs.map(q => {
+      const ranked = ((((q.sectorConcentration || {})[state.sectorLevel]) || {}).ranked) || [];
+      return rotationCell(ranked.find(s => s.sector === name) || null);
+    }).join('');
+    return '<tr><td class="l" tabindex="0" data-help="gicsName" data-gics-full="' + esc(name) + '">' + esc(name) + '</td>' + cells + '</tr>';
+  }).join('');
+  return head + '<span class="panel-note">Current-quarter ranking \u00b7 historical as-of GICS only</span></div>' +
+    '<div class="rank-body"><div class="table-clip rot"><table class="rot-table"><thead>' + thead + '</thead><tbody>' + body + '</tbody></table></div>' +
+    '<div class="rank-note">Rows are the current quarter\u2019s largest classified industries, tracked backward only with verified historical as-of GICS. Live Bloomberg GICS captured at refresh is not applied backward. An industry absent from a historical snapshot is shown as unavailable, not zero. Position count is CUSIP-level Total Exposure names.</div>' +
+    gicsReconNotes(g) + '</div></div>';
 }
 
 function slowestModeled(liq) {
@@ -1331,38 +1466,56 @@ function primaryFlag(p) {
   return { text: '\u2014', cls: '', row: '' };
 }
 
+function blotterExtraCount() {
+  const c = state.posCols;
+  return (c.verified ? 1 : 0) + (c.adv ? 1 : 0) + (c.so ? 1 : 0) + (c.gics ? 1 : 0) + (c.qoq ? 1 : 0);
+}
+function blotterColCount() { return 9 + blotterExtraCount(); }
+function blotterFootLabel(shown, all) {
+  if (shown === all) return all + ' modeled positions';
+  return shown + ' of ' + all + ' modeled positions';
+}
+
 function renderBlotter(r) {
   const cols = state.posCols;
-  return '<div class="panel"><div class="panel-h"><span class="panel-title">ADV-Modeled Securities</span><span class="panel-note">Both ADV windows shown</span></div>' +
+  const allN = (r.liquidity || []).length;
+  const shown = filteredPositionRows();
+  const extraCols =
+    (cols.verified ? '<col style="width:108px">' : '') +
+    (cols.adv ? '<col style="width:96px">' : '') +
+    (cols.so ? '<col style="width:108px">' : '') +
+    (cols.gics ? '<col style="width:160px">' : '') +
+    (cols.qoq ? '<col style="width:110px">' : '');
+  return '<div class="panel"><div class="panel-h"><span class="panel-title">ADV-Modeled Securities</span><span class="panel-note">Both ADV windows shown \u00b7 scroll for full blotter</span></div>' +
     '<div class="toolbar"><input class="search" id="pos-search" placeholder="Search security, ticker or CUSIP" value="' + esc(state.search) + '">' +
     [['all','All'],['flagged','Compounding'],['threshold','Threshold'],['concilliq','Conc. + illiquid']].map(([k,l]) => '<button type="button" class="seg' + (state.filter===k?' on':'') + '" data-filter="' + k + '">' + l + '</button>').join('') +
-    '<div class="more-wrap"><button type="button" class="seg' + (state.more==='pos'?' on':'') + '" data-more="pos">More</button>' +
+    '<div class="more-wrap"><button type="button" class="seg' + (state.more==='pos'?' on':'') + '" data-more="pos">Columns</button>' +
     (state.more==='pos' ? '<div class="menu">' +
       (DATA.qoqAvailable ? '<button type="button" class="menu-item" data-filter="new">New</button><button type="button" class="menu-item" data-filter="increased">Increased</button><button type="button" class="menu-item" data-filter="decreased">Decreased</button>' : '') +
       (DATA.chainAvailable ? '<button type="button" class="menu-item" data-filter="reentered">Re-entry</button>' : '') +
-      '<label><input type="checkbox" data-pos-col="shares"' + (cols.shares?' checked':'') + '> Shares</label>' +
       '<label><input type="checkbox" data-pos-col="verified"' + (cols.verified?' checked':'') + '> Verified value</label>' +
       '<label><input type="checkbox" data-pos-col="adv"' + (cols.adv?' checked':'') + '> ADV 20d</label>' +
       '<label><input type="checkbox" data-pos-col="so"' + (cols.so?' checked':'') + '> Shares outstanding</label>' +
       '<label><input type="checkbox" data-pos-col="gics"' + (cols.gics?' checked':'') + '> GICS</label>' +
       (DATA.qoqAvailable ? '<label><input type="checkbox" data-pos-col="qoq"' + (cols.qoq?' checked':'') + '> QoQ status</label>' : '') +
       '</div>' : '') + '</div></div>' +
-    '<div class="table-clip pos" data-scroll="pos"><table class="pos-table"><colgroup><col style="width:452px"><col style="width:152px"><col style="width:160px"><col style="width:136px"><col style="width:136px"><col style="width:132px"><col style="width:192px"></colgroup><thead><tr>' +
+    '<div class="table-clip pos" data-scroll="pos"><table class="pos-table"><colgroup><col><col style="width:92px"><col style="width:100px"><col style="width:76px"><col style="width:88px"><col style="width:88px"><col style="width:88px"><col style="width:68px"><col style="width:128px">' + extraCols + '</colgroup><thead><tr>' +
     '<th class="l' + (state.sortKey==='issuer'||state.sortKey==='ticker'?' sorted':'') + '" data-k="issuer">Security' + sortMark(state.sortKey==='issuer'||state.sortKey==='ticker') + '</th>' +
+    '<th' + (state.sortKey==='shares'?' class="sorted"':'') + ' data-k="shares">Shares' + sortMark(state.sortKey==='shares') + '</th>' +
     '<th' + (state.sortKey==='filedValue'?' class="sorted"':'') + ' data-k="filedValue">Filed Value' + sortMark(state.sortKey==='filedValue') + '</th>' +
-    '<th' + (state.sortKey==='pctOfCommonBook'?' class="sorted"':'') + ' data-k="pctOfCommonBook" data-help="pctCommon">% Common Book' + sortMark(state.sortKey==='pctOfCommonBook') + '</th>' +
-    '<th' + (state.sortKey==='daysToLiquidate_20d'?' class="sorted"':'') + ' data-k="daysToLiquidate_20d" data-help="dtl">DTL 20d' + sortMark(state.sortKey==='daysToLiquidate_20d') + '</th>' +
-    '<th' + (state.sortKey==='daysToLiquidate_3m'?' class="sorted"':'') + ' data-k="daysToLiquidate_3m" data-help="dtl">DTL 3m' + sortMark(state.sortKey==='daysToLiquidate_3m') + '</th>' +
+    '<th' + (state.sortKey==='pctOfCommonBook'?' class="sorted"':'') + ' data-k="pctOfCommonBook" data-help="pctFund">% Fund' + sortMark(state.sortKey==='pctOfCommonBook') + '</th>' +
+    '<th' + (state.sortKey==='daysToLiquidate_20d'?' class="sorted"':'') + ' data-k="daysToLiquidate_20d" data-help="dtl20">Days (20d)' + sortMark(state.sortKey==='daysToLiquidate_20d') + '</th>' +
+    '<th' + (state.sortKey==='daysToLiquidate_3m'?' class="sorted"':'') + ' data-k="daysToLiquidate_3m" data-help="dtl3m">Days (3m)' + sortMark(state.sortKey==='daysToLiquidate_3m') + '</th>' +
+    '<th' + (state.sortKey==='volumeTrendPct'?' class="sorted"':'') + ' data-k="volumeTrendPct" data-help="volTrend">Vol Trend' + sortMark(state.sortKey==='volumeTrendPct') + '</th>' +
     '<th' + (state.sortKey==='pctSharesOutstanding'?' class="sorted"':'') + ' data-k="pctSharesOutstanding" data-help="ownership">% SO' + sortMark(state.sortKey==='pctSharesOutstanding') + '</th>' +
     '<th>Flags</th>' +
-    (cols.shares ? '<th' + (state.sortKey==='shares'?' class="sorted"':'') + ' data-k="shares">Shares</th>' : '') +
     (cols.verified ? '<th' + (state.sortKey==='verifiedValue'?' class="sorted"':'') + ' data-k="verifiedValue">Verified</th>' : '') +
     (cols.adv ? '<th' + (state.sortKey==='adv_20d'?' class="sorted"':'') + ' data-k="adv_20d">ADV 20d</th>' : '') +
     (cols.so ? '<th' + (state.sortKey==='sharesOutstanding'?' class="sorted"':'') + ' data-k="sharesOutstanding">SO</th>' : '') +
     (cols.gics ? '<th class="l' + (state.sortKey==='gicsIndustry'?' sorted':'') + '" data-k="gicsIndustry">GICS</th>' : '') +
     (cols.qoq ? '<th class="l">QoQ</th>' : '') +
-    '</tr></thead><tbody id="pos-tbody">' + positionRowsHtml(filteredPositionRows()) + '</tbody></table></div>' +
-    '<div class="panel-foot"><span>' + filteredPositionRows().length + ' modeled instruments \u00b7 Filed values and verified values remain distinct</span></div></div>';
+    '</tr></thead><tbody id="pos-tbody">' + positionRowsHtml(shown) + '</tbody></table></div>' +
+    '<div class="panel-foot"><span id="pos-foot">' + blotterFootLabel(shown.length, allN) + '</span><span>Filed values and verified values remain distinct</span></div></div>';
 }
 
 function filteredPositionRows() {
@@ -1390,7 +1543,7 @@ function filteredPositionRows() {
 }
 function positionRowsHtml(rows) {
   const cols = state.posCols;
-  if (!rows.length) return '<tr><td colspan="7"><div class="empty">No positions match these filters <button type="button" class="linkish" id="clear-pos">Clear filters</button></div></td></tr>';
+  if (!rows.length) return '<tr><td colspan="' + blotterColCount() + '"><div class="empty">No positions match these filters <button type="button" class="linkish" id="clear-pos">Clear filters</button></div></td></tr>';
   return rows.map(p => {
     const key = 'pos-' + sid(p.cusip, p.instrumentClass);
     const flag = primaryFlag(p);
@@ -1398,13 +1551,14 @@ function positionRowsHtml(rows) {
     const so = p.pctSharesOutstanding != null ? p.pctSharesOutstanding.toFixed(2) + '%' : '\u2014';
     return '<tr class="clickable ' + flag.row + (state.selectedKey===key?' sel':'') + '" tabindex="0" data-row-key="' + esc(key) + '" data-open-leg="' + esc(sid(p.cusip, p.instrumentClass)) + '">' +
       '<td class="l">' + secCell(p.ticker, p.issuer) + '</td>' +
+      '<td class="mono">' + (p.shares != null ? fmtShares(p.shares) : '\u2014') + '</td>' +
       '<td>' + (p.filedValue != null ? money(p.filedValue, true) : dash()) + '</td>' +
       '<td>' + pct + '</td>' +
       '<td class="mono">' + fmtDays(p.daysToLiquidate_20d) + '</td>' +
       '<td class="mono">' + fmtDays(p.daysToLiquidate_3m) + '</td>' +
+      '<td class="' + volTrendClass(p.volumeTrendPct) + '">' + fmtVolTrend(p.volumeTrendPct) + '</td>' +
       '<td class="mono">' + so + '</td>' +
       '<td>' + (flag.cls ? '<span class="badge ' + flag.cls + '">' + esc(flag.text) + '</span>' : '<span class="z">\u2014</span>') + '</td>' +
-      (cols.shares ? '<td class="mono">' + (p.shares != null ? p.shares.toLocaleString() : '\u2014') + '</td>' : '') +
       (cols.verified ? '<td>' + money(p.verifiedValue, true) + '</td>' : '') +
       (cols.adv ? '<td class="mono">' + (p.adv_20d ? Math.round(p.adv_20d).toLocaleString() : '\u2014') + '</td>' : '') +
       (cols.so ? '<td class="mono">' + (p.sharesOutstanding ? Math.round(p.sharesOutstanding).toLocaleString() : '\u2014') + '</td>' : '') +
@@ -1684,7 +1838,16 @@ function attachEvents() {
 
   const posSearch = document.getElementById('pos-search');
   if (posSearch) {
-    posSearch.oninput = (e) => { state.search = e.target.value; const tb = document.getElementById('pos-tbody'); if (tb) { tb.innerHTML = positionRowsHtml(filteredPositionRows()); attachLegClicks('#pos-tbody'); } };
+    posSearch.oninput = (e) => {
+      state.search = e.target.value;
+      const rows = filteredPositionRows();
+      const tb = document.getElementById('pos-tbody');
+      if (tb) { tb.innerHTML = positionRowsHtml(rows); attachLegClicks('#pos-tbody'); }
+      const foot = document.getElementById('pos-foot');
+      if (foot) foot.textContent = blotterFootLabel(rows.length, (currentRateData().liquidity || []).length);
+      const clearPosLive = document.getElementById('clear-pos');
+      if (clearPosLive) clearPosLive.onclick = () => { state.filter = 'all'; state.search = ''; render(); };
+    };
   }
   document.querySelectorAll('.menu').forEach(el => el.addEventListener('click', ev => ev.stopPropagation()));
   document.querySelectorAll('[data-filter]').forEach(el => el.addEventListener('click', () => { state.filter = el.dataset.filter; state.more = null; render(); }));
@@ -1768,35 +1931,68 @@ function drawCurve() {
 }
 function drawMatrix() {
   const el = document.getElementById('matrix-chart');
-  const points = currentRateData().liquidity.filter(p => p.pctSharesOutstanding !== null && p.daysToLiquidate_20d !== null);
+  const yKey = state.curveWindow === '3m' ? 'daysToLiquidate_3m' : 'daysToLiquidate_20d';
+  const yWin = state.curveWindow === '3m' ? '3m' : '20d';
+  const points = currentRateData().liquidity.filter(p => p.pctSharesOutstanding !== null && p[yKey] !== null);
   if (!points.length) { el.innerHTML = '<span class="panel-note">No positions with both ownership % and liquidity data.</span>'; return; }
-  const W = el.clientWidth || 480, H = el.clientHeight || 220, PAD = { l: 62, r: 16, t: 16, b: 46 };
+  const W = el.clientWidth || 480, H = el.clientHeight || 280, PAD = { l: 78, r: 18, t: 16, b: 56 };
   const maxX = Math.max(...points.map(p=>p.pctSharesOutstanding), 5) * 1.1;
-  const maxYRaw = Math.max(...points.map(p=>p.daysToLiquidate_20d), 10);
+  const maxYRaw = Math.max(...points.map(p=>p[yKey]), 10);
   const yScale = v => Math.log10(v+1), maxY = yScale(maxYRaw)*1.1;
   const x = v => PAD.l + (v/maxX)*(W-PAD.l-PAD.r);
   const y = v => (H-PAD.b) - (yScale(v)/maxY)*(H-PAD.t-PAD.b);
   const sizes = points.map(p => Math.abs(p.filedCommonValue || p.verifiedValue || 0));
   const maxSz = Math.max(...sizes, 1);
   const svg = svgEl('svg', { viewBox:`0 0 ${W} ${H}`, style:'width:100%;height:100%;display:block' });
-  [1,10,100,1000].filter(v=>v<=maxYRaw*1.2).forEach(v => {
-    const t = svgEl('text', { class:'axislabel', x:24, y:y(v)+3 }); t.textContent = v+'d'; svg.appendChild(t);
+  const yTicks = [1, 10, 100, 1000].filter(v => v <= maxYRaw * 1.15);
+  if (!yTicks.includes(maxYRaw) && maxYRaw > 1) yTicks.push(maxYRaw);
+  yTicks.forEach(v => {
+    svg.appendChild(svgEl('line', { class:'gridline', x1:PAD.l, x2:W-PAD.r, y1:y(v), y2:y(v) }));
+    svg.appendChild(svgEl('line', { class:'tickmark', x1:PAD.l-5, x2:PAD.l, y1:y(v), y2:y(v) }));
+    const t = svgEl('text', { class:'axislabel', x:PAD.l-8, y:y(v)+3, 'text-anchor':'end' });
+    t.textContent = (Math.abs(v - Math.round(v)) < 0.05 ? Math.round(v) : v.toFixed(1)) + 'd';
+    svg.appendChild(t);
   });
-  [0, maxX].forEach(v => {
-    const t = svgEl('text', { class:'axislabel', x:x(v), y:H-PAD.b+16, 'text-anchor': v===0?'start':'end' }); t.textContent = v.toFixed(0)+'%'; svg.appendChild(t);
+  const xCount = 4;
+  const xTicks = [];
+  for (let i = 0; i <= xCount; i++) xTicks.push(maxX * i / xCount);
+  xTicks.forEach(v => {
+    svg.appendChild(svgEl('line', { class:'gridline', x1:x(v), x2:x(v), y1:PAD.t, y2:H-PAD.b }));
+    svg.appendChild(svgEl('line', { class:'tickmark', x1:x(v), x2:x(v), y1:H-PAD.b, y2:H-PAD.b+5 }));
+    const t = svgEl('text', { class:'axislabel', x:x(v), y:H-PAD.b+18, 'text-anchor': v===0 ? 'start' : (v>=maxX*0.99 ? 'end' : 'middle') });
+    t.textContent = (maxX >= 10 ? v.toFixed(0) : v.toFixed(1)) + '%';
+    svg.appendChild(t);
   });
-  const xTitle = svgEl('text', { class:'axislabel', x:(PAD.l+W-PAD.r)/2, y:H-6, 'text-anchor': 'middle' });
+  svg.appendChild(svgEl('line', { class:'axisline', x1:PAD.l, y1:PAD.t, x2:PAD.l, y2:H-PAD.b }));
+  svg.appendChild(svgEl('line', { class:'axisline', x1:PAD.l, y1:H-PAD.b, x2:W-PAD.r, y2:H-PAD.b }));
+  const xTitle = svgEl('text', { class:'axis-title', x:(PAD.l+W-PAD.r)/2, y:H-8, 'text-anchor': 'middle' });
   xTitle.textContent = 'Ownership \u00b7 % shares outstanding'; svg.appendChild(xTitle);
-  const yTitle = svgEl('text', { class:'axislabel', x:8, y:(PAD.t+H-PAD.b)/2, 'text-anchor': 'middle', transform:`rotate(-90 8 ${(PAD.t+H-PAD.b)/2})` });
-  yTitle.textContent = 'Exit days \u00b7 log'; svg.appendChild(yTitle);
+  const yMid = (PAD.t+H-PAD.b)/2;
+  const yTitle = svgEl('text', { class:'axis-title', x:14, y:yMid, 'text-anchor': 'middle', transform:`rotate(-90 14 ${yMid})` });
+  yTitle.textContent = 'Exit days \u00b7 ' + yWin + ' ADV'; svg.appendChild(yTitle);
   const tooltip = document.createElement('div'); tooltip.className = 'chart-tip';
   points.forEach(p => {
     const rad = 3 + 9 * Math.sqrt((p.filedCommonValue || p.verifiedValue || 0) / maxSz);
     let fill = '#66B0FF';
     if (p.concentratedAndIlliquid) fill = '#FF8C87';
     else if (p.thresholdProximityFlag || p.compoundingIlliquidity) fill = '#E9B85B';
-    const dot = svgEl('circle', { class:'scatterdot', cx:x(p.pctSharesOutstanding), cy:y(p.daysToLiquidate_20d), r:rad, fill, opacity:0.85 });
-    dot.onmouseenter = () => { tooltip.innerHTML = '<strong>' + esc(p.ticker || '') + ' ' + esc(p.issuer) + '</strong><br>' + fmtDays(p.daysToLiquidate_20d) + ' \u00b7 ' + p.pctSharesOutstanding.toFixed(2) + '% SO \u00b7 ' + fmtUSD(p.filedCommonValue || p.verifiedValue, true); tooltip.classList.add('show'); };
+    const flag = primaryFlag(p);
+    const dot = svgEl('circle', { class:'scatterdot', cx:x(p.pctSharesOutstanding), cy:y(p[yKey]), r:rad, fill, opacity:0.85 });
+    dot.onmouseenter = () => {
+      const so = p.pctSharesOutstanding != null ? p.pctSharesOutstanding.toFixed(2) + '%' : '\u2014';
+      const fund = p.pctOfCommonBook != null ? p.pctOfCommonBook.toFixed(2) + '%' : '\u2014';
+      tooltip.innerHTML =
+        '<strong>' + esc(p.ticker || '\u2014') + '</strong> ' + esc(p.issuer || '') + '<br>' +
+        'Shares ' + (p.shares != null ? fmtShares(p.shares) : '\u2014') + '<br>' +
+        'Filed Value ' + (p.filedValue != null ? fmtUSD(p.filedValue, true) : '\u2014') + '<br>' +
+        '% Fund ' + fund + '<br>' +
+        '% Shares Outstanding ' + so + '<br>' +
+        'Days (20d) ' + fmtDays(p.daysToLiquidate_20d) + '<br>' +
+        'Days (3m) ' + fmtDays(p.daysToLiquidate_3m) + '<br>' +
+        'Vol Trend ' + fmtVolTrend(p.volumeTrendPct) + '<br>' +
+        'Flag ' + esc(flag.text);
+      tooltip.classList.add('show');
+    };
     dot.onmousemove = (e) => { const rect = el.getBoundingClientRect(); tooltip.style.left = (e.clientX-rect.left+12)+'px'; tooltip.style.top = (e.clientY-rect.top-8)+'px'; };
     dot.onmouseleave = () => tooltip.classList.remove('show');
     dot.onclick = () => openLeg(p.cusip, p.instrumentClass);

@@ -33,6 +33,7 @@ import json
 import re
 import sys
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 from fund_io import read_market_meta, write_market_snapshot
@@ -187,9 +188,8 @@ def filing_cusips_from_rows(rows):
 
 
 def persist_quarter_market_data(rows, market_data):
-    """Write THIS quarter's own market-data pull. Used later as that
-    quarter's classification snapshot -- never as a substitute for a
-    different quarter's missing GICS.
+    """Write THIS filing's market-data pull (live Bloomberg BDP, including
+    GICS). File presence is not historical as-of-quarter GICS provenance.
 
     Guards against a shared working market_data.json from another fund:
     at least MARKET_STAMP_MIN_PRECISION of the market-data CUSIPs must
@@ -231,13 +231,82 @@ def persist_quarter_market_data(rows, market_data):
 
 
 def load_quarter_specific_market_data(rows):
-    """Load GICS/market data that belongs to this quarter's own snapshot.
-    Returns {} if no snapshot exists -- does NOT fall back to the live
-    current-quarter market_data.json."""
+    """Load market data stored under this quarter's stamped path.
+    Returns {} if no file exists -- does NOT fall back to another
+    quarter's market_data.json. A non-empty file is still a live BDP
+    pull unless historical_gics_as_of_available(meta, period) is true."""
     path = quarter_market_data_path(rows)
     if path is None or not path.exists():
         return {}
     return load_market_data(str(path))
+
+
+def period_of_report_from_rows(rows):
+    """Canonical 13F period_of_report from classified rows.
+
+    Uses _source_period_of_report only. Does not infer the quarter from
+    a stamped market-data filename.
+    """
+    if not rows:
+        return None
+    period = rows[0].get("_source_period_of_report")
+    if not isinstance(period, str):
+        return None
+    period = period.strip()
+    return period or None
+
+
+def _parse_yyyy_mm_dd(value):
+    """Exact YYYY-MM-DD calendar date, or None if missing/unparseable.
+
+    The whole string must be YYYY-MM-DD. ISO timestamps are not
+    accepted until the metadata contract is extended to allow them.
+    """
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    try:
+        return datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def historical_gics_as_of_available(meta, period_of_report):
+    """True only with explicit historical/as-of GICS provenance.
+
+    Current Bloomberg GICS fields are live BDP() values (no date
+    override). A quarter-stamped market_data_{cik}_{period}.json file
+    may contain classifications from a later refresh date. File
+    presence, CUSIP overlap, bloombergPulledAt, and current-quarter
+    identity are not historical provenance.
+
+    Required metadata:
+      gicsSourceType == 'historical_asof'
+      gicsAsOfDate parses as YYYY-MM-DD
+      that date equals this quarter's canonical period_of_report
+
+    A matching date on a live/current source does not qualify.
+    A historical_asof source dated to a different quarter does not
+    qualify. Do not guess BDH/override syntax. Do not synthesize
+    those fields on live BDP imports.
+    """
+    if not isinstance(meta, dict):
+        return False
+    source = (meta.get("gicsSourceType") or "").strip()
+    if source != "historical_asof":
+        return False
+    period_date = _parse_yyyy_mm_dd(period_of_report)
+    as_of_date = _parse_yyyy_mm_dd(meta.get("gicsAsOfDate"))
+    if period_date is None or as_of_date is None:
+        return False
+    return as_of_date == period_date
+
+
+def market_meta_for_rows(rows):
+    path = quarter_market_data_path(rows)
+    if path is None or not path.exists():
+        return {}
+    return read_market_meta(path)
 
 
 def build_qoq_buckets(statuses, common_book_total):
@@ -640,6 +709,22 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
         gics_rotation = compute_gics_l3_rotation(
             prior_exposures, exposures, prior_gics_l3, current_gics_l3
         )
+        prior_hist = historical_gics_as_of_available(
+            market_meta_for_rows(immediate_prior_rows),
+            period_of_report_from_rows(immediate_prior_rows),
+        )
+        current_hist = historical_gics_as_of_available(
+            market_meta_for_rows(classified_rows),
+            period_of_report_from_rows(classified_rows),
+        )
+        provenance = prior_hist and current_hist
+        gics_rotation["historicalProvenanceAvailable"] = provenance
+        gics_rotation["priorHistoricalGicsAsOfAvailable"] = prior_hist
+        gics_rotation["currentHistoricalGicsAsOfAvailable"] = current_hist
+        # Live BDP GICS in a prior-named file is not historical as-of data.
+        # Do not ship a ranking that would treat it as Q-1 history.
+        if not provenance:
+            gics_rotation["ranked"] = []
 
         changes_blotter = []
         for s in last_pairwise_statuses:
@@ -668,9 +753,12 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
                     "currentExposure": 0,
                 })
 
-        # Trends still uses each quarter's snapshot when one exists;
-        # compute_quarter_snapshot itself is unchanged. Current-quarter
-        # GICS is NOT copied onto prior quarters here.
+        # Trends still uses each quarter's stamped market file when one
+        # exists; current-quarter live GICS is NOT copied onto prior
+        # quarters. A stamped file is a live BDP pull unless
+        # historical_gics_as_of_available(meta, period_of_report) is
+        # true -- file presence and a non-matching gicsAsOfDate do not
+        # unlock historical rotation.
         trend_quarters_rows = list(prior_quarters_rows) + [classified_rows]
         trends_over_time = []
         for rows in trend_quarters_rows:
@@ -681,7 +769,12 @@ def build_dashboard_data(fund_name, classified_rows, market_data, prior_quarters
                 l3, l4 = sector_by_cusip_l3, sector_by_cusip_l4
             else:
                 l3, l4 = {}, {}
-            trends_over_time.append(compute_quarter_snapshot(rows, l3, l4))
+            qsnap = compute_quarter_snapshot(rows, l3, l4)
+            qsnap["historicalGicsAsOfAvailable"] = historical_gics_as_of_available(
+                market_meta_for_rows(rows),
+                period_of_report_from_rows(rows),
+            )
+            trends_over_time.append(qsnap)
 
     full_book_value = sum(p["value"] for p in positions)
 

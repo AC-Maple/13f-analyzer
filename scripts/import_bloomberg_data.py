@@ -501,6 +501,10 @@ def finalize_and_write(
     output_path = Path(output_file)
     if bloomberg_pulled_at and MARKET_NAME_RE.match(output_path.name):
         meta["bloombergPulledAt"] = bloomberg_pulled_at
+    # Live BDP import: never set gicsSourceType='historical_asof' or
+    # gicsAsOfDate. GICS_INDUSTRY_NAME / GICS_SUB_INDUSTRY_NAME are
+    # current Bloomberg fields with no date override. A stamped
+    # market_data_{cik}_{period}.json is not a historical GICS snapshot.
     write_market_json(output_file, results, meta or None)
     if meta.get("bloombergPulledAt"):
         print(f"Bloomberg pulled at {meta['bloombergPulledAt']}")

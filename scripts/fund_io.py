@@ -169,33 +169,47 @@ def load_json(path: Path):
         return json.load(f)
 
 
+# Optional wrapper keys. Read/write only when already present as non-empty
+# strings. Never invent bloombergPulledAt or historical GICS provenance.
+MARKET_META_KEYS = ("bloombergPulledAt", "gicsAsOfDate", "gicsSourceType")
+
+
+def _meta_from_raw(raw):
+    meta = {}
+    if not isinstance(raw, dict):
+        return meta
+    for key in MARKET_META_KEYS:
+        val = raw.get(key)
+        if isinstance(val, str) and val.strip():
+            meta[key] = val.strip()
+    return meta
+
+
 def split_market_payload(raw, source="market data"):
     """Accept a legacy JSON list or a {bloombergPulledAt, records} wrapper.
 
     Provenance only. Returns (records, meta). Historical list files stay
-    valid and carry empty meta — never invent a pull date.
+    valid and carry empty meta — never invent a pull date or GICS as-of
+    fields. Live Bloomberg BDP imports must not be labeled historical_asof.
     """
     if isinstance(raw, list):
         return raw, {}
     if isinstance(raw, dict) and isinstance(raw.get("records"), list):
-        meta = {}
-        pulled = raw.get("bloombergPulledAt")
-        if isinstance(pulled, str) and pulled.strip():
-            meta["bloombergPulledAt"] = pulled.strip()
-        return raw["records"], meta
+        return raw["records"], _meta_from_raw(raw)
     raise ValueError(
         f"{source}: market data must be a JSON list or an object with a records list"
     )
 
 
 def market_payload_dump(records, meta=None):
-    """Serialize market data. Wrapper is used only when a pull timestamp exists."""
-    pulled = (meta or {}).get("bloombergPulledAt")
-    if isinstance(pulled, str) and pulled.strip():
-        return {
-            "bloombergPulledAt": pulled.strip(),
-            "records": records,
-        }
+    """Serialize market data. Wrapper is used when any provenance key exists."""
+    out_meta = {}
+    for key in MARKET_META_KEYS:
+        val = (meta or {}).get(key)
+        if isinstance(val, str) and val.strip():
+            out_meta[key] = val.strip()
+    if out_meta:
+        return {**out_meta, "records": records}
     return records
 
 

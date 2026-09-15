@@ -479,8 +479,11 @@ def compute_gics_l3_rotation(prior_exposures, current_exposures,
                              prior_gics_by_cusip, current_gics_by_cusip):
     """GICS Level 3 industry rotation on true-long exposure.
 
-    Uses quarter-specific classification maps. Never apply the current
-    quarter's GICS map to a prior-quarter holding (and never the reverse).
+    Uses the GICS map supplied for each analysis period (the mapping
+    associated with that period's available market-data input).
+    Historical validity depends on source provenance. Never apply the
+    current period's GICS map to a prior-period holding (and never the
+    reverse).
 
     Inclusion rules:
       CONTINUING (held both quarters) -- usable L3 in EACH respective map
